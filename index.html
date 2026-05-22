@@ -22,10 +22,13 @@
   </script>
   <link rel="stylesheet" href="./assets/styles.css" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tsparticles/slim@3/tsparticles.slim.bundle.min.js" defer></script>
   <script src="./assets/app.js" defer></script>
 </head>
 <body class="min-h-screen flex flex-col bg-ink text-gray-200 relative overflow-x-hidden">
 
+  <div class="scroll-progress"></div>
+  <div id="tsparticles"></div>
   <div class="bg-aurora"></div>
 
   <nav class="fixed top-0 w-full z-50 glass border-b border-white/10">
@@ -73,18 +76,18 @@
     <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="text-center max-w-4xl mx-auto">
-          <div class="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6 text-xs text-gray-300 border border-white/10">
+          <div class="reveal inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6 text-xs text-gray-300 border border-white/10">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            200+ анализов проведено
+            <span class="counter" data-counter="200" data-suffix="+">0</span>&nbsp;анализов проведено
           </div>
-          <h1 class="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-gradient leading-tight">
+          <h1 class="reveal reveal-delay-1 text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-gradient leading-tight">
             Объективный AI-анализ внешности
           </h1>
-          <p class="mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p class="reveal reveal-delay-2 mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
             17 метрик качества, персональный роадмап улучшений на 30 дней и сравнение прогресса «до/после». Получите реальные рекомендации, а не пустые комплименты.
           </p>
 
-          <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div class="reveal reveal-delay-3 mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="#pricing" class="btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
               Начать анализ за 199₽
               <i data-lucide="arrow-right" class="w-4 h-4"></i>
@@ -95,7 +98,7 @@
             </a>
           </div>
 
-          <div class="mt-16 flex flex-wrap items-center justify-center gap-6 text-gray-500 text-sm">
+          <div class="reveal reveal-delay-4 mt-16 flex flex-wrap items-center justify-center gap-6 text-gray-500 text-sm">
             <div class="flex items-center gap-3">
               <div class="avatar-stack flex -space-x-2">
                 <div></div><div></div><div></div><div></div>
@@ -118,15 +121,38 @@
       </div>
     </section>
 
+    <section class="py-10 relative">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="reveal glass rounded-2xl border border-white/10 px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div>
+            <div class="text-2xl md:text-3xl font-bold text-white counter" data-counter="17">0</div>
+            <div class="text-xs text-gray-500 mt-1">метрик в отчёте</div>
+          </div>
+          <div>
+            <div class="text-2xl md:text-3xl font-bold text-white counter" data-counter="94" data-suffix="%">0</div>
+            <div class="text-xs text-gray-500 mt-1">точность модели</div>
+          </div>
+          <div>
+            <div class="text-2xl md:text-3xl font-bold text-white counter" data-counter="30">0</div>
+            <div class="text-xs text-gray-500 mt-1">дней роадмапа</div>
+          </div>
+          <div>
+            <div class="text-2xl md:text-3xl font-bold text-white counter" data-counter="4.9" data-suffix="">0</div>
+            <div class="text-xs text-gray-500 mt-1">рейтинг ★</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="features" class="py-24 relative">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-16 max-w-2xl mx-auto">
+        <div class="reveal text-center mb-16 max-w-2xl mx-auto">
           <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Почему imarsen</h2>
           <p class="mt-4 text-gray-400">Не просто оценка, а полноценная система для тех, кто работает над собой. Сравнивайте прогресс, получайте бонусы, следуйте роадмапу.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div class="feature-card">
+          <div class="feature-card reveal">
             <div class="icon-bubble mb-5"><i data-lucide="scan-face"></i></div>
             <h3 class="text-lg font-semibold text-white mb-2">17 метрик качества</h3>
             <p class="text-gray-400 text-sm leading-relaxed">От симметрии до золотого сечения — полный разбор вашей внешности по научным параметрам.</p>
@@ -135,7 +161,7 @@
             </div>
           </div>
 
-          <div class="feature-card">
+          <div class="feature-card reveal">
             <div class="icon-bubble mb-5"><i data-lucide="camera"></i></div>
             <h3 class="text-lg font-semibold text-white mb-2">Два ракурса</h3>
             <p class="text-gray-400 text-sm leading-relaxed">Загрузка фото в анфас и профиль для максимально точного анализа пропорций.</p>
@@ -144,7 +170,7 @@
             </div>
           </div>
 
-          <div class="feature-card">
+          <div class="feature-card reveal">
             <div class="icon-bubble mb-5"><i data-lucide="history"></i></div>
             <h3 class="text-lg font-semibold text-white mb-2">История прогресса</h3>
             <p class="text-gray-400 text-sm leading-relaxed">Все ваши анализы сохраняются. Следите за динамикой улучшений по каждой метрике.</p>
@@ -153,7 +179,7 @@
             </div>
           </div>
 
-          <div class="feature-card">
+          <div class="feature-card reveal">
             <div class="icon-bubble mb-5"><i data-lucide="git-compare"></i></div>
             <h3 class="text-lg font-semibold text-white mb-2">Сравнение до/после</h3>
             <p class="text-gray-400 text-sm leading-relaxed">Визуальное сравнение двух отчётов с графиками изменений по 17 параметрам.</p>
@@ -162,7 +188,7 @@
             </div>
           </div>
 
-          <div class="feature-card">
+          <div class="feature-card reveal">
             <div class="icon-bubble mb-5"><i data-lucide="users"></i></div>
             <h3 class="text-lg font-semibold text-white mb-2">Реферальная система</h3>
             <p class="text-gray-400 text-sm leading-relaxed">Пригласите друга — получите бесплатный анализ. Друг получит скидку 20% на первый заказ.</p>
@@ -171,7 +197,7 @@
             </div>
           </div>
 
-          <div class="feature-card">
+          <div class="feature-card reveal">
             <div class="icon-bubble mb-5"><i data-lucide="bell"></i></div>
             <h3 class="text-lg font-semibold text-white mb-2">Push-напоминания</h3>
             <p class="text-gray-400 text-sm leading-relaxed">Уведомления на 14-й и 30-й день роадмапа, чтобы не сбиться с плана улучшений.</p>
@@ -185,14 +211,14 @@
 
     <section id="pricing" class="py-24 relative">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-16 max-w-2xl mx-auto">
+        <div class="reveal text-center mb-16 max-w-2xl mx-auto">
           <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Тарифы</h2>
           <p class="mt-4 text-gray-400">Разовый анализ для знакомства или подписка для отслеживания прогресса. Пригласи друга — получи бесплатный анализ в подарок.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
 
-          <div class="relative rounded-2xl p-8 glass border border-white/10 flex flex-col">
+          <div class="relative rounded-2xl p-8 glass border border-white/10 flex flex-col reveal tilt">
             <div class="mb-6">
               <h3 class="text-xl font-semibold text-white">Разовый анализ</h3>
               <p class="text-sm text-gray-400 mt-1">Полный отчёт по одному фото в анфас</p>
@@ -213,7 +239,7 @@
             <a href="#buy" class="mt-4 btn-ghost px-4 py-2.5 rounded-lg text-center text-sm">Купить за 199₽</a>
           </div>
 
-          <div class="relative rounded-2xl p-8 glass-strong border border-white/20 price-card-highlight z-10 flex flex-col">
+          <div class="relative rounded-2xl p-8 glass-strong border border-white/20 price-card-highlight z-10 flex flex-col reveal reveal-delay-2 tilt">
             <div class="absolute -top-4 left-1/2 -translate-x-1/2"><span class="badge-popular">Популярный</span></div>
             <div class="mb-6">
               <h3 class="text-xl font-semibold text-white">Подписка HTN</h3>
@@ -236,7 +262,7 @@
             <a href="#buy" class="mt-4 btn-primary px-4 py-2.5 rounded-lg text-center text-sm font-medium">Оформить подписку</a>
           </div>
 
-          <div class="relative rounded-2xl p-8 glass border border-white/10 flex flex-col">
+          <div class="relative rounded-2xl p-8 glass border border-white/10 flex flex-col reveal reveal-delay-3 tilt">
             <div class="mb-6">
               <h3 class="text-xl font-semibold text-white">Подписка CHAD</h3>
               <p class="text-sm text-gray-400 mt-1">Максимальный результат</p>
@@ -259,7 +285,7 @@
           </div>
         </div>
 
-        <div id="referral" class="mt-16 glass rounded-2xl p-8 border border-white/10 max-w-3xl mx-auto text-center">
+        <div id="referral" class="reveal mt-16 glass rounded-2xl p-8 border border-white/10 max-w-3xl mx-auto text-center">
           <div class="icon-bubble mx-auto mb-4"><i data-lucide="gift"></i></div>
           <h3 class="text-xl font-semibold text-white">Пригласи друга — получи бонус</h3>
           <p class="text-gray-400 mt-2 text-sm max-w-xl mx-auto">Отправь реферальную ссылку. Когда друг оплатит первый анализ, ты получишь +1 бесплатный анализ на свой баланс.</p>
@@ -270,7 +296,7 @@
 
     <section id="faq" class="py-24 relative">
       <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-12">
+        <div class="reveal text-center mb-12">
           <div class="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-4 text-xs text-gray-300 border border-white/10">
             <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Вопросы и ответы
           </div>
@@ -364,12 +390,12 @@
         </div>
 
         <div class="mt-16 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="glass rounded-xl border border-white/10 p-6">
+          <div class="glass rounded-xl border border-white/10 p-6 reveal">
             <div class="icon-bubble mb-3"><i data-lucide="users"></i></div>
             <h4 class="text-white font-semibold">Реферальная программа</h4>
             <p class="text-gray-400 text-sm mt-1">Пригласи друга → получи бесплатный анализ.</p>
           </div>
-          <div class="glass rounded-xl border border-white/10 p-6">
+          <div class="glass rounded-xl border border-white/10 p-6 reveal reveal-delay-2">
             <div class="icon-bubble mb-3"><i data-lucide="message-square"></i></div>
             <h4 class="text-white font-semibold">Отзыв = скидка 20%</h4>
             <p class="text-gray-400 text-sm mt-1">Оставь отзыв после анализа и получи промокод на 20% скидку на следующую покупку.</p>
