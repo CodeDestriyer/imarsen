@@ -39,7 +39,7 @@ export function Nav() {
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-white/10 glass">
+        <div className="md:hidden border-t border-white/10 bg-ink/95 backdrop-blur-xl shadow-2xl">
           <div className="px-4 py-4 flex flex-col gap-3 text-sm">
             {links.map((l) => (
               <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-gray-300">{l.label}</a>
