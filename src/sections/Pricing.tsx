@@ -57,7 +57,7 @@ export function Pricing() {
         <Reveal>
           <div className="text-center mb-16 max-w-2xl mx-auto">
             <div className="telemetry mb-3">03 — pricing</div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Выбери <span className="serif-accent">формат</span></h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Выбери формат</h2>
             <p className="mt-4 text-gray-400">Разовый анализ для знакомства или подписка для отслеживания прогресса. Пригласи друга — получи бесплатный анализ в подарок.</p>
           </div>
         </Reveal>

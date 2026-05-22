@@ -39,7 +39,7 @@ export function Features() {
         <Reveal>
           <div className="text-center mb-16 max-w-2xl mx-auto">
             <div className="telemetry mb-3">02 — features</div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Почему <span className="serif-accent">imarsen</span></h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Почему imarsen</h2>
             <p className="mt-4 text-gray-400">Не просто оценка, а полноценная система для тех, кто работает над собой. Сравнивайте прогресс, получайте бонусы, следуйте роадмапу.</p>
           </div>
         </Reveal>

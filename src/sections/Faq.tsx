@@ -44,7 +44,7 @@ export function Faq() {
               <HelpCircle className="w-3.5 h-3.5" /> Вопросы и ответы
             </div>
             <div className="telemetry mb-3">04 — faq</div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Что <span className="serif-accent">спрашивают</span> чаще всего</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Что спрашивают чаще всего</h2>
           </div>
         </Reveal>
 
