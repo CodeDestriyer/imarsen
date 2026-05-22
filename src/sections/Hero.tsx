@@ -13,12 +13,12 @@ export function Hero() {
           <Reveal>
             <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6 text-xs text-gray-300 border border-white/10">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <Counter to={200} suffix="+" />&nbsp;анализов проведено
+              <span className="telemetry">IMR-<Counter to={200} suffix="+" /> анализов</span>
             </div>
           </Reveal>
-          <Reveal delay={0.08}>
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-gradient leading-tight">
-              Объективный AI-анализ внешности
+          <Reveal delay={0.08} variant="blur">
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-gradient leading-[1.05]">
+              Объективный AI-<span className="serif-accent">анализ</span> внешности
             </h1>
           </Reveal>
           <Reveal delay={0.16}>
@@ -47,13 +47,15 @@ export function Hero() {
                 <span>Реферальная программа</span>
               </div>
               <div className="h-4 w-px bg-gray-800 hidden sm:block" />
-              <div className="flex items-center gap-2">
+              <div className="rating-pill flex items-center gap-2 cursor-default">
                 <div className="flex text-yellow-400">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star key={i} className="w-4 h-4 fill-yellow-400" />
                   ))}
                 </div>
-                <span>4.9 рейтинг</span>
+                <span className="mono">4.9</span>
+                <span>рейтинг</span>
+                <span className="rating-tooltip">★★★★★ от @kirill_m · 3 мин назад</span>
               </div>
             </div>
           </Reveal>

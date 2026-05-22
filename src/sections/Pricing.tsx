@@ -10,19 +10,22 @@ function PriceCard({ plan, delay }: { plan: Plan; delay: number }) {
     <Reveal delay={delay}>
       <Tilt
         className={clsx(
-          'relative rounded-2xl p-8 border flex flex-col h-full',
-          plan.highlight ? 'glass-strong border-white/20 price-card-highlight z-10' : 'glass border-white/10',
+          'relative p-8 border flex flex-col h-full',
+          plan.highlight
+            ? 'glass-strong border-white/20 price-card-highlight z-10 rounded-2xl'
+            : 'glass border-white/10 rounded-2xl cut-corner',
         )}
       >
         {plan.highlight && (
           <div className="absolute -top-4 left-1/2 -translate-x-1/2"><span className="badge-popular">Популярный</span></div>
         )}
         <div className="mb-6">
+          <div className="telemetry mb-2">PLAN_0{plan.highlight ? 2 : delay > 0.05 ? 3 : 1}</div>
           <h3 className="text-xl font-semibold text-white">{plan.name}</h3>
           <p className="text-sm text-gray-400 mt-1">{plan.tagline}</p>
         </div>
         <div className="mb-6 flex items-baseline gap-1">
-          <span className="text-4xl font-bold text-white">{plan.price}</span>
+          <span className="text-4xl font-bold text-white mono">{plan.price}</span>
           <span className="text-gray-500 text-sm">{plan.period}</span>
         </div>
         <ul className="w-full space-y-3 text-sm text-gray-300 flex-1">
@@ -53,7 +56,8 @@ export function Pricing() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Reveal>
           <div className="text-center mb-16 max-w-2xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Тарифы</h2>
+            <div className="telemetry mb-3">03 — pricing</div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Выбери <span className="serif-accent">формат</span></h2>
             <p className="mt-4 text-gray-400">Разовый анализ для знакомства или подписка для отслеживания прогресса. Пригласи друга — получи бесплатный анализ в подарок.</p>
           </div>
         </Reveal>

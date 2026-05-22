@@ -14,6 +14,7 @@ export default function App() {
       <ScrollProgress />
       <Particles />
       <div className="bg-aurora" />
+      <div className="grain" aria-hidden />
       <Nav />
       <main className="flex-1 relative z-10">
         <Hero />

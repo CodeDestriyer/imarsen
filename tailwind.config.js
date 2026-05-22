@@ -6,6 +6,12 @@ export default {
       colors: {
         ink: '#05060a',
       },
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['"Inter Tight"', 'Inter', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        serif: ['"Instrument Serif"', 'ui-serif', 'Georgia', 'serif'],
+      },
     },
   },
   plugins: [],
