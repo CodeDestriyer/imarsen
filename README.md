@@ -37,6 +37,3 @@ src/
 
 Framework Preset: **Vite** (определяется автоматически). Build: `pnpm build`. Output: `dist`.
 
-## legacy/
-
-Старый vanilla-HTML вариант лежит в `legacy/` на случай отката.
