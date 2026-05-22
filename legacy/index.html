@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>imarsen — AI-анализ внешности | Объективная оценка 17 метрик</title>
+  <meta name="description" content="imarsen — объективный AI-анализ внешности по 17 метрикам качества, персональный роадмап улучшений на 30 дней и сравнение прогресса до/после." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#05060a',
+          },
+          fontFamily: {
+            sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="./assets/styles.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tsparticles/slim@3/tsparticles.slim.bundle.min.js" defer></script>
+  <script src="./assets/app.js" defer></script>
+</head>
+<body class="min-h-screen flex flex-col bg-ink text-gray-200 relative overflow-x-hidden">
+
+  <div class="scroll-progress"></div>
+  <div id="tsparticles"></div>
+  <div class="bg-aurora"></div>
+
+  <nav class="fixed top-0 w-full z-50 glass border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <a href="#top" class="flex items-center gap-2 group">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white">i</div>
+          <span class="font-semibold tracking-tight text-white">imarsen</span>
+        </a>
+
+        <div class="hidden md:flex items-center space-x-8 text-sm">
+          <a href="#top" class="text-gray-300 hover:text-white transition">Главная</a>
+          <a href="#features" class="text-gray-300 hover:text-white transition">Анализ</a>
+          <a href="#pricing" class="text-gray-300 hover:text-white transition">Тарифы</a>
+          <a href="#faq" class="text-gray-300 hover:text-white transition">FAQ</a>
+          <a href="#referral" class="text-gray-300 hover:text-white transition">Рефералка</a>
+        </div>
+
+        <div class="hidden md:flex items-center space-x-3">
+          <a href="#login" class="btn-ghost px-4 py-2 rounded-lg text-sm">Войти</a>
+          <a href="#pricing" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium">Начать</a>
+        </div>
+
+        <button id="burger" class="md:hidden text-gray-200 p-2" aria-label="menu">
+          <i data-lucide="menu"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="mobile-menu" class="hidden md:hidden border-t border-white/10 glass">
+      <div class="px-4 py-4 flex flex-col gap-3 text-sm">
+        <a href="#top" class="text-gray-300">Главная</a>
+        <a href="#features" class="text-gray-300">Анализ</a>
+        <a href="#pricing" class="text-gray-300">Тарифы</a>
+        <a href="#faq" class="text-gray-300">FAQ</a>
+        <a href="#referral" class="text-gray-300">Рефералка</a>
+        <a href="#login" class="btn-ghost px-4 py-2 rounded-lg text-center">Войти</a>
+        <a href="#pricing" class="btn-primary px-4 py-2 rounded-lg text-center font-medium">Начать</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top" class="flex-1 relative z-10">
+
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div class="text-center max-w-4xl mx-auto">
+          <div class="reveal inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6 text-xs text-gray-300 border border-white/10">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="counter" data-counter="200" data-suffix="+">0</span>&nbsp;анализов проведено
+          </div>
+          <h1 class="reveal reveal-delay-1 text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-gradient leading-tight">
+            Объективный AI-анализ внешности
+          </h1>
+          <p class="reveal reveal-delay-2 mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            17 метрик качества, персональный роадмап улучшений на 30 дней и сравнение прогресса «до/после». Получите реальные рекомендации, а не пустые комплименты.
+          </p>
+
+          <div class="reveal reveal-delay-3 mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href="#pricing" class="btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
+              Начать анализ за 199₽
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </a>
+            <a href="#features" class="btn-ghost px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
+              <i data-lucide="play" class="w-4 h-4"></i>
+              Смотреть пример отчёта
+            </a>
+          </div>
+
+          <div class="reveal reveal-delay-4 mt-16 flex flex-wrap items-center justify-center gap-6 text-gray-500 text-sm">
+            <div class="flex items-center gap-3">
+              <div class="avatar-stack flex -space-x-2">
+                <div></div><div></div><div></div><div></div>
+              </div>
+              <span>Реферальная программа</span>
+            </div>
+            <div class="h-4 w-px bg-gray-800 hidden sm:block"></div>
+            <div class="flex items-center gap-2">
+              <div class="flex text-yellow-400">
+                <i data-lucide="star" class="w-4 h-4 fill-yellow-400"></i>
+                <i data-lucide="star" class="w-4 h-4 fill-yellow-400"></i>
+                <i data-lucide="star" class="w-4 h-4 fill-yellow-400"></i>
+                <i data-lucide="star" class="w-4 h-4 fill-yellow-400"></i>
+                <i data-lucide="star" class="w-4 h-4 fill-yellow-400"></i>
+              </div>
+              <span>4.9 рейтинг</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-10 relative">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="reveal glass rounded-2xl border border-white/10 px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div>
+            <div class="text-2xl md:text-3xl font-bold text-white counter" data-counter="17">0</div>
+            <div class="text-xs text-gray-500 mt-1">метрик в отчёте</div>
+          </div>
+          <div>
+            <div class="text-2xl md:text-3xl font-bold text-white counter" data-counter="94" data-suffix="%">0</div>
+            <div class="text-xs text-gray-500 mt-1">точность модели</div>
+          </div>
+          <div>
+            <div class="text-2xl md:text-3xl font-bold text-white counter" data-counter="30">0</div>
+            <div class="text-xs text-gray-500 mt-1">дней роадмапа</div>
+          </div>
+          <div>
+            <div class="text-2xl md:text-3xl font-bold text-white counter" data-counter="4.9" data-suffix="">0</div>
+            <div class="text-xs text-gray-500 mt-1">рейтинг ★</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="py-24 relative">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="reveal text-center mb-16 max-w-2xl mx-auto">
+          <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Почему imarsen</h2>
+          <p class="mt-4 text-gray-400">Не просто оценка, а полноценная система для тех, кто работает над собой. Сравнивайте прогресс, получайте бонусы, следуйте роадмапу.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="feature-card reveal">
+            <div class="icon-bubble mb-5"><i data-lucide="scan-face"></i></div>
+            <h3 class="text-lg font-semibold text-white mb-2">17 метрик качества</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">От симметрии до золотого сечения — полный разбор вашей внешности по научным параметрам.</p>
+            <div class="flex items-center justify-between pt-4 mt-5 border-t border-white/10 text-xs text-gray-500">
+              <span>Точность</span><span class="text-indigo-300 font-medium">94%</span>
+            </div>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="icon-bubble mb-5"><i data-lucide="camera"></i></div>
+            <h3 class="text-lg font-semibold text-white mb-2">Два ракурса</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">Загрузка фото в анфас и профиль для максимально точного анализа пропорций.</p>
+            <div class="flex items-center justify-between pt-4 mt-5 border-t border-white/10 text-xs text-gray-500">
+              <span>Формат</span><span class="text-indigo-300 font-medium">2 фото</span>
+            </div>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="icon-bubble mb-5"><i data-lucide="history"></i></div>
+            <h3 class="text-lg font-semibold text-white mb-2">История прогресса</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">Все ваши анализы сохраняются. Следите за динамикой улучшений по каждой метрике.</p>
+            <div class="flex items-center justify-between pt-4 mt-5 border-t border-white/10 text-xs text-gray-500">
+              <span>Хранение</span><span class="text-indigo-300 font-medium">∞</span>
+            </div>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="icon-bubble mb-5"><i data-lucide="git-compare"></i></div>
+            <h3 class="text-lg font-semibold text-white mb-2">Сравнение до/после</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">Визуальное сравнение двух отчётов с графиками изменений по 17 параметрам.</p>
+            <div class="flex items-center justify-between pt-4 mt-5 border-t border-white/10 text-xs text-gray-500">
+              <span>Доступно</span><span class="text-indigo-300 font-medium">В подписке</span>
+            </div>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="icon-bubble mb-5"><i data-lucide="users"></i></div>
+            <h3 class="text-lg font-semibold text-white mb-2">Реферальная система</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">Пригласите друга — получите бесплатный анализ. Друг получит скидку 20% на первый заказ.</p>
+            <div class="flex items-center justify-between pt-4 mt-5 border-t border-white/10 text-xs text-gray-500">
+              <span>Бонус</span><span class="text-indigo-300 font-medium">+1 анализ</span>
+            </div>
+          </div>
+
+          <div class="feature-card reveal">
+            <div class="icon-bubble mb-5"><i data-lucide="bell"></i></div>
+            <h3 class="text-lg font-semibold text-white mb-2">Push-напоминания</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">Уведомления на 14-й и 30-й день роадмапа, чтобы не сбиться с плана улучшений.</p>
+            <div class="flex items-center justify-between pt-4 mt-5 border-t border-white/10 text-xs text-gray-500">
+              <span>Контроль</span><span class="text-indigo-300 font-medium">24/7</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="py-24 relative">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="reveal text-center mb-16 max-w-2xl mx-auto">
+          <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Тарифы</h2>
+          <p class="mt-4 text-gray-400">Разовый анализ для знакомства или подписка для отслеживания прогресса. Пригласи друга — получи бесплатный анализ в подарок.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+
+          <div class="relative rounded-2xl p-8 glass border border-white/10 flex flex-col reveal tilt">
+            <div class="mb-6">
+              <h3 class="text-xl font-semibold text-white">Разовый анализ</h3>
+              <p class="text-sm text-gray-400 mt-1">Полный отчёт по одному фото в анфас</p>
+            </div>
+            <div class="mb-6 flex items-baseline gap-1">
+              <span class="text-4xl font-bold text-white">₽199</span>
+              <span class="text-gray-500 text-sm">/разово</span>
+            </div>
+            <ul class="w-full space-y-3 text-sm text-gray-300 flex-1">
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>17 детальных метрик</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Фото в анфас</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Персональный роадмап на 30 дней</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Список улучшений по неделям</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Сохранение отчёта в кабинете</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>20% скидка за отзыв</li>
+            </ul>
+            <div class="mt-6 text-xs text-gray-500">🎁 Есть промокод?</div>
+            <a href="#buy" class="mt-4 btn-ghost px-4 py-2.5 rounded-lg text-center text-sm">Купить за 199₽</a>
+          </div>
+
+          <div class="relative rounded-2xl p-8 glass-strong border border-white/20 price-card-highlight z-10 flex flex-col reveal reveal-delay-2 tilt">
+            <div class="absolute -top-4 left-1/2 -translate-x-1/2"><span class="badge-popular">Популярный</span></div>
+            <div class="mb-6">
+              <h3 class="text-xl font-semibold text-white">Подписка HTN</h3>
+              <p class="text-sm text-gray-400 mt-1">Для тех, кто отслеживает прогресс</p>
+            </div>
+            <div class="mb-6 flex items-baseline gap-1">
+              <span class="text-4xl font-bold text-white">₽249</span>
+              <span class="text-gray-500 text-sm">/месяц</span>
+            </div>
+            <ul class="w-full space-y-3 text-sm text-gray-300 flex-1">
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-purple-300 mt-0.5"></i>2 полных анализа в месяц</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-purple-300 mt-0.5"></i>Анфас + профиль (2 фото)</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-purple-300 mt-0.5"></i>Системное сравнение «до/после»</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-purple-300 mt-0.5"></i>История анализов с графиками</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-purple-300 mt-0.5"></i>Отслеживание динамики по метрикам</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-purple-300 mt-0.5"></i>Push-напоминания (14/30 дней)</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-purple-300 mt-0.5"></i>Приоритетная обработка</li>
+            </ul>
+            <div class="mt-6 text-xs text-gray-400">🎁 Есть промокод?</div>
+            <a href="#buy" class="mt-4 btn-primary px-4 py-2.5 rounded-lg text-center text-sm font-medium">Оформить подписку</a>
+          </div>
+
+          <div class="relative rounded-2xl p-8 glass border border-white/10 flex flex-col reveal reveal-delay-3 tilt">
+            <div class="mb-6">
+              <h3 class="text-xl font-semibold text-white">Подписка CHAD</h3>
+              <p class="text-sm text-gray-400 mt-1">Максимальный результат</p>
+            </div>
+            <div class="mb-6 flex items-baseline gap-1">
+              <span class="text-4xl font-bold text-white">₽349</span>
+              <span class="text-gray-500 text-sm">/месяц</span>
+            </div>
+            <ul class="w-full space-y-3 text-sm text-gray-300 flex-1">
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>3 полных анализа в месяц</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Анфас + профиль (2 фото)</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Безлимитное системное сравнение</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>1 AI-сравнение фото в месяц</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Акцентированный отчёт на слабые зоны</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Углублённый роадмап по проблемам</li>
+              <li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 text-indigo-300 mt-0.5"></i>Push-напоминания и поддержка 24/7</li>
+            </ul>
+            <div class="mt-6 text-xs text-gray-500">🎁 Есть промокод?</div>
+            <a href="#buy" class="mt-4 btn-ghost px-4 py-2.5 rounded-lg text-center text-sm">Стать CHAD</a>
+          </div>
+        </div>
+
+        <div id="referral" class="reveal mt-16 glass rounded-2xl p-8 border border-white/10 max-w-3xl mx-auto text-center">
+          <div class="icon-bubble mx-auto mb-4"><i data-lucide="gift"></i></div>
+          <h3 class="text-xl font-semibold text-white">Пригласи друга — получи бонус</h3>
+          <p class="text-gray-400 mt-2 text-sm max-w-xl mx-auto">Отправь реферальную ссылку. Когда друг оплатит первый анализ, ты получишь +1 бесплатный анализ на свой баланс.</p>
+          <a href="#login" class="mt-5 inline-block btn-primary px-5 py-2.5 rounded-lg text-sm font-medium">Войти для получения ссылки</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="py-24 relative">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="reveal text-center mb-12">
+          <div class="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-4 text-xs text-gray-300 border border-white/10">
+            <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Вопросы и ответы
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Часто задаваемые вопросы</h2>
+        </div>
+
+        <div class="space-y-4">
+          <div class="faq-item glass rounded-xl border border-white/10 overflow-hidden">
+            <button class="faq-head w-full flex items-center justify-between text-left px-6 py-4 text-white font-medium">
+              <span>Что входит в разовый анализ за 199₽?</span>
+              <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-gray-400"></i>
+            </button>
+            <div class="faq-body">
+              <div class="px-6 pb-5 text-gray-400 text-sm leading-relaxed">
+                Полный отчёт по 17 метрикам на основе фото в анфас, персональный роадмап улучшений на 30 дней с поэтапным планом, список конкретных действий по неделям. Отчёт сохраняется в вашем личном кабинете навсегда. За оставленный отзыв вернём 20% стоимости на следующую покупку.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item glass rounded-xl border border-white/10 overflow-hidden">
+            <button class="faq-head w-full flex items-center justify-between text-left px-6 py-4 text-white font-medium">
+              <span>Как работает подписка HTN и CHAD?</span>
+              <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-gray-400"></i>
+            </button>
+            <div class="faq-body">
+              <div class="px-6 pb-5 text-gray-400 text-sm leading-relaxed">
+                Подписка HTN (249₽/мес) включает 2 полных анализа в месяц: можно загрузить анфас и профиль. Также вы получаете доступ к истории с графиками динамики и системному сравнению отчётов. Подписка CHAD (349₽/мес) включает 3 анализа в месяц, безлимитное системное сравнение, 1 AI-сравнение фото в месяц, а также акцентированный отчёт на слабые зоны.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item glass rounded-xl border border-white/10 overflow-hidden">
+            <button class="faq-head w-full flex items-center justify-between text-left px-6 py-4 text-white font-medium">
+              <span>Как получить бесплатный анализ через реферальную программу?</span>
+              <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-gray-400"></i>
+            </button>
+            <div class="faq-body">
+              <div class="px-6 pb-5 text-gray-400 text-sm leading-relaxed">
+                В личном кабинете есть кнопка «Пригласить друга». Отправьте другу уникальную ссылку. Когда он зарегистрируется и оплатит любой анализ, на ваш баланс начислится +1 бесплатный анализ. Вы можете накопить несколько бонусов и использовать их вместо оплаты.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item glass rounded-xl border border-white/10 overflow-hidden">
+            <button class="faq-head w-full flex items-center justify-between text-left px-6 py-4 text-white font-medium">
+              <span>Можно ли вернуть деньги, если я не отправил фото?</span>
+              <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-gray-400"></i>
+            </button>
+            <div class="faq-body">
+              <div class="px-6 pb-5 text-gray-400 text-sm leading-relaxed">
+                Да. Если вы оплатили, но не загрузили фото для анализа, возврат средств возможен в течение 24 часов. Если анализ уже выполнен, возврат невозможен, но мы можем пересчитать бонусы на ваш баланс.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item glass rounded-xl border border-white/10 overflow-hidden">
+            <button class="faq-head w-full flex items-center justify-between text-left px-6 py-4 text-white font-medium">
+              <span>Как работает сравнение «до/после»?</span>
+              <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-gray-400"></i>
+            </button>
+            <div class="faq-body">
+              <div class="px-6 pb-5 text-gray-400 text-sm leading-relaxed">
+                Два типа сравнения: системное (доступно на HTN и CHAD) — сравнивает динамику по 17 метрикам и показывает прогресс в графиках. AI-сравнение фото (только CHAD, 1 раз в месяц) — нейросеть анализирует визуальные изменения между фото, показывает, что именно улучшилось, и даёт детальные рекомендации.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item glass rounded-xl border border-white/10 overflow-hidden">
+            <button class="faq-head w-full flex items-center justify-between text-left px-6 py-4 text-white font-medium">
+              <span>Что такое акцентированный отчёт в подписке CHAD?</span>
+              <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-gray-400"></i>
+            </button>
+            <div class="faq-body">
+              <div class="px-6 pb-5 text-gray-400 text-sm leading-relaxed">
+                Это расширенный анализ, который детально разбирает 3–4 самые слабые метрики вашего лица. Вместо общих рекомендаций вы получаете углублённый роадмап конкретно по этим зонам: упражнения, уход, коррекция. Доступен только в тарифе CHAD.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item glass rounded-xl border border-white/10 overflow-hidden">
+            <button class="faq-head w-full flex items-center justify-between text-left px-6 py-4 text-white font-medium">
+              <span>Какие фото лучше загружать?</span>
+              <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-gray-400"></i>
+            </button>
+            <div class="faq-body">
+              <div class="px-6 pb-5 text-gray-400 text-sm leading-relaxed">
+                Для разового анализа — анфас при хорошем освещении. Для подписок — анфас + профиль в одинаковых условиях освещения для точного сравнения. Избегайте фильтров, очков и головных уборов.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-16 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="glass rounded-xl border border-white/10 p-6 reveal">
+            <div class="icon-bubble mb-3"><i data-lucide="users"></i></div>
+            <h4 class="text-white font-semibold">Реферальная программа</h4>
+            <p class="text-gray-400 text-sm mt-1">Пригласи друга → получи бесплатный анализ.</p>
+          </div>
+          <div class="glass rounded-xl border border-white/10 p-6 reveal reveal-delay-2">
+            <div class="icon-bubble mb-3"><i data-lucide="message-square"></i></div>
+            <h4 class="text-white font-semibold">Отзыв = скидка 20%</h4>
+            <p class="text-gray-400 text-sm mt-1">Оставь отзыв после анализа и получи промокод на 20% скидку на следующую покупку.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="relative z-10 border-t border-white/10 mt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div>
+        <a href="#top" class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white">i</div>
+          <span class="font-semibold text-white">imarsen</span>
+        </a>
+        <p class="text-gray-500 text-sm mt-4 max-w-sm">Профессиональный ИИ-анализ внешности по 17 метрикам качества. Получите объективную оценку и персональные рекомендации.</p>
+      </div>
+      <div>
+        <h5 class="text-white font-semibold mb-3 text-sm">Навигация</h5>
+        <ul class="space-y-2 text-sm text-gray-400">
+          <li><a href="#top" class="hover:text-white transition">Главная</a></li>
+          <li><a href="#features" class="hover:text-white transition">Новый анализ</a></li>
+          <li><a href="#login" class="hover:text-white transition">Мои отчёты</a></li>
+          <li><a href="#login" class="hover:text-white transition">Личный кабинет</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5 class="text-white font-semibold mb-3 text-sm">Связь</h5>
+        <a href="#" class="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm transition">
+          <i data-lucide="send" class="w-4 h-4"></i> Telegram
+        </a>
+      </div>
+    </div>
+    <div class="border-t border-white/10 py-6 text-center text-xs text-gray-500">
+      © 2026 imarsen
+    </div>
+  </footer>
+
+</body>
+</html>

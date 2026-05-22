@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; }
+  html, body {
+    background: #05060a;
+    color: #e5e7eb;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(168, 85, 247, 0.4); color: #fff; }
+}
+
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, #fff 0%, #c4b5fd 45%, #818cf8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    color: #fff;
+    box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.6);
+    transition: transform 0.15s ease, filter 0.15s ease;
+  }
+  .btn-primary:hover { transform: translateY(-1px); filter: brightness(1.07); }
+  .btn-ghost {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e5e7eb;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  .icon-bubble {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.25));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #c4b5fd;
+  }
+  .badge-popular {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    letter-spacing: 0.03em;
+  }
+}
+
+.bg-aurora { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.bg-aurora::before,
+.bg-aurora::after {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(120px);
+  opacity: 0.55;
+}
+.bg-aurora::before {
+  width: 520px; height: 520px;
+  background: radial-gradient(circle, #6366f1 0%, transparent 70%);
+  top: -120px; left: -120px;
+  animation: float1 18s ease-in-out infinite;
+}
+.bg-aurora::after {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, #a855f7 0%, transparent 70%);
+  bottom: -180px; right: -160px;
+  animation: float2 22s ease-in-out infinite;
+}
+@keyframes float1 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(60px, 40px); } }
+@keyframes float2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-60px, -40px); } }
+
+.feature-card {
+  position: relative; overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  padding: 1.75rem;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.feature-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+}
+.feature-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), rgba(168, 85, 247, 0.18), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.feature-card:hover::before { opacity: 1; }
+
+.price-card-highlight {
+  position: relative;
+  transform: scale(1.03);
+  border-color: rgba(168, 85, 247, 0.35) !important;
+  box-shadow: 0 30px 80px -30px rgba(168, 85, 247, 0.45);
+}
+
+.scroll-progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0;
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+  z-index: 60;
+  transition: width 0.1s linear;
+}
+
+.tilt { transform-style: preserve-3d; transition: transform 0.25s ease; will-change: transform; }
+.counter { font-variant-numeric: tabular-nums; }
