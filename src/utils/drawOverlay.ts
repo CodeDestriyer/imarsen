@@ -113,12 +113,23 @@ export function drawSnapshotOverlay(
   const px = (i: number): Px => toPx(lm[i]);
   const mapIdx = (idxs: readonly number[]): Px[] => idxs.map((i) => toPx(lm[i]));
 
+  const ys = lm.map((p) => p.y * h);
+  const faceTop = Math.min(...ys);
+  const faceBottom = Math.max(...ys);
+  const faceHeight = faceBottom - faceTop;
+
+  const EYE_OFFSET_Y = -faceHeight * 0.045;
+  const JAW_OFFSET_Y = faceHeight * 0.06;
+
+  const shift = (p: Px, dy: number): Px => ({ x: p.x, y: p.y + dy });
+  const shiftAll = (pts: Px[], dy: number): Px[] => pts.map((p) => shift(p, dy));
+
   const lineW = Math.max(2.5, h * 0.0045);
   const thinW = Math.max(1.5, h * 0.0022);
   const dotR = Math.max(1.5, h * 0.003);
   const fontSize = Math.max(15, Math.round(h * 0.028));
 
-  drawPolyline(ctx, mapIdx(JAW_CONTOUR), 'rgba(99,102,241,0.9)', lineW);
+  drawPolyline(ctx, shiftAll(mapIdx(JAW_CONTOUR), JAW_OFFSET_Y), 'rgba(99,102,241,0.9)', lineW);
   drawPolyline(ctx, mapIdx(LIPS_OUTER), 'rgba(16,185,129,0.85)', thinW);
   drawPolyline(ctx, mapIdx(NOSE_BRIDGE), 'rgba(249,115,22,0.85)', thinW, true);
 
@@ -126,7 +137,7 @@ export function drawSnapshotOverlay(
 
   if (hasIris) {
     const drawIris = (centerIdx: number, rightIdx: number, leftIdx: number) => {
-      const c = toPx(lm[centerIdx]);
+      const c = shift(toPx(lm[centerIdx]), EYE_OFFSET_Y);
       const r1 = toPx(lm[rightIdx]);
       const r2 = toPx(lm[leftIdx]);
       const radius = Math.hypot(r1.x - r2.x, r1.y - r2.y) / 2;
@@ -143,27 +154,23 @@ export function drawSnapshotOverlay(
     drawIris(468, 469, 470);
     drawIris(473, 474, 475);
   } else {
-    drawPolyline(ctx, mapIdx(EYE_LEFT_CONTOUR), 'rgba(34,211,238,0.8)', thinW);
-    drawPolyline(ctx, mapIdx(EYE_RIGHT_CONTOUR), 'rgba(34,211,238,0.8)', thinW);
+    drawPolyline(ctx, shiftAll(mapIdx(EYE_LEFT_CONTOUR), EYE_OFFSET_Y), 'rgba(34,211,238,0.8)', thinW);
+    drawPolyline(ctx, shiftAll(mapIdx(EYE_RIGHT_CONTOUR), EYE_OFFSET_Y), 'rgba(34,211,238,0.8)', thinW);
   }
 
   drawDots(
     ctx,
     [
       ...mapIdx(LIPS_OUTER),
-      ...mapIdx(JAW_CONTOUR),
+      ...shiftAll(mapIdx(JAW_CONTOUR), JAW_OFFSET_Y),
     ],
     'rgba(196,181,253,0.7)',
     dotR,
   );
 
-  const lEye = hasIris ? toPx(lm[468]) : toPx(mid(lm[159], lm[145]));
-  const rEye = hasIris ? toPx(lm[473]) : toPx(mid(lm[386], lm[374]));
+  const lEye = shift(hasIris ? toPx(lm[468]) : toPx(mid(lm[159], lm[145])), EYE_OFFSET_Y);
+  const rEye = shift(hasIris ? toPx(lm[473]) : toPx(mid(lm[386], lm[374])), EYE_OFFSET_Y);
   drawPolyline(ctx, [lEye, rEye], '#22d3ee', lineW);
-
-  const ys = lm.map((p) => p.y * h);
-  const faceTop = Math.min(...ys);
-  const faceBottom = Math.max(...ys);
 
   const marginX = Math.max(12, w * 0.02);
   const marginY = Math.max(12, h * 0.025);
@@ -187,7 +194,7 @@ export function drawSnapshotOverlay(
   drawPill(ctx, fwhrAnchor, `FWHR ${m.fwhr.toFixed(2)}`, '#6b21a8', '#faf5ff', fontSize, 'left');
 
   const jawAnchor = { x: w - marginX, y: Math.min(h - marginY - fontSize, faceBottom + 20) };
-  const chinPx = px(IDX.CHIN);
+  const chinPx = shift(px(IDX.CHIN), JAW_OFFSET_Y);
   drawLeader(ctx, chinPx, { x: jawAnchor.x - fontSize * 3, y: jawAnchor.y }, 'rgba(99,102,241,0.5)', thinW);
   drawPill(ctx, jawAnchor, `JAW ${m.jawAngle.toFixed(0)}°`, '#3730a3', '#eef2ff', fontSize, 'right');
 
