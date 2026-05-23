@@ -1,4 +1,4 @@
-import { Check, Gift } from 'lucide-react';
+import { Check, Gift, Send } from 'lucide-react';
 import clsx from 'clsx';
 import { Reveal } from '@/components/Reveal';
 import { Tilt } from '@/components/Tilt';
@@ -67,11 +67,18 @@ export function Pricing() {
           ))}
         </div>
         <Reveal>
-          <div id="referral" className="mt-16 glass rounded-2xl p-8 border border-white/10 max-w-3xl mx-auto text-center">
-            <div className="icon-bubble mx-auto mb-4"><Gift /></div>
-            <h3 className="text-xl font-semibold text-white">Пригласи друга — получи бонус</h3>
-            <p className="text-gray-400 mt-2 text-sm max-w-xl mx-auto">Отправь реферальную ссылку. Когда друг оплатит первый анализ, ты получишь +1 бесплатный анализ на свой баланс.</p>
-            <a href="#login" className="mt-5 inline-block btn-primary px-5 py-2.5 rounded-lg text-sm font-medium">Войти для получения ссылки</a>
+          <div id="contact" className="mt-16 glass rounded-2xl p-8 border border-white/10 max-w-3xl mx-auto text-center">
+            <div className="icon-bubble mx-auto mb-4"><Send /></div>
+            <h3 className="text-xl font-semibold text-white">Связь с нами</h3>
+            <p className="text-gray-400 mt-2 text-sm max-w-xl mx-auto">Все новости, обновления и обратная связь — в нашем Telegram-канале.</p>
+            <a
+              href="https://t.me/+OBtlpNOrmPU1MTFk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex items-center gap-2 btn-primary px-5 py-2.5 rounded-lg text-sm font-medium"
+            >
+              <Send className="w-4 h-4" /> Перейти в Telegram
+            </a>
           </div>
         </Reveal>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, HelpCircle, Users, MessageSquare } from 'lucide-react';
+import { ChevronDown, HelpCircle, Send, MessageSquare } from 'lucide-react';
 import { Reveal } from '@/components/Reveal';
 import { faqs } from '@/data/content';
 
@@ -56,11 +56,16 @@ export function Faq() {
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-4">
           <Reveal>
-            <div className="glass rounded-xl border border-white/10 p-6 h-full">
-              <div className="icon-bubble mb-3"><Users /></div>
-              <h4 className="text-white font-semibold">Реферальная программа</h4>
-              <p className="text-gray-400 text-sm mt-1">Пригласи друга → получи бесплатный анализ.</p>
-            </div>
+            <a
+              href="https://t.me/+OBtlpNOrmPU1MTFk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glass rounded-xl border border-white/10 p-6 h-full block hover:border-white/20 transition"
+            >
+              <div className="icon-bubble mb-3"><Send /></div>
+              <h4 className="text-white font-semibold">Telegram-канал</h4>
+              <p className="text-gray-400 text-sm mt-1">Новости, обновления и обратная связь — в одном месте.</p>
+            </a>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="glass rounded-xl border border-white/10 p-6 h-full">

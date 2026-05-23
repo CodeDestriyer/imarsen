@@ -24,8 +24,13 @@ export function Footer() {
         </div>
         <div>
           <h5 className="text-white font-semibold mb-3 text-sm">Связь</h5>
-          <a href="#" className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm transition">
-            <Send className="w-4 h-4" /> Telegram
+          <a
+            href="https://t.me/+OBtlpNOrmPU1MTFk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm transition"
+          >
+            <Send className="w-4 h-4" /> Telegram-канал
           </a>
         </div>
       </div>

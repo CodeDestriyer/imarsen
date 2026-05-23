@@ -6,14 +6,14 @@ const links = [
   { href: '#features', label: 'Анализ' },
   { href: '#pricing', label: 'Тарифы' },
   { href: '#faq', label: 'FAQ' },
-  { href: '#referral', label: 'Рефералка' },
+  { href: '#contact', label: 'Связь' },
 ];
 
 export function Nav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-ink/95 backdrop-blur-xl border-b border-white/10">
+    <nav className="fixed top-0 w-full z-50 bg-ink/70 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <a href="#top" className="flex items-center gap-2">

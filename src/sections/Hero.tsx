@@ -14,7 +14,7 @@ export function Hero() {
           <Reveal>
             <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6 text-xs text-gray-300 border border-white/10">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="telemetry">IMR-<Counter to={200} suffix="+" /> анализов</span>
+              <Counter to={50} suffix="+" /> анализов уже проведено
             </div>
           </Reveal>
           <Reveal delay={0.08} variant="blur">
