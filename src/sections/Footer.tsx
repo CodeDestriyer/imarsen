@@ -6,7 +6,7 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <a href="#top" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white">i</div>
+            <img src="/logo.jpg" alt="imarsen" className="w-8 h-8 rounded-lg object-cover border border-white/15" />
             <span className="font-semibold text-white">imarsen</span>
           </a>
           <p className="text-gray-500 text-sm mt-4 max-w-sm">

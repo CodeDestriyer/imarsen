@@ -83,7 +83,7 @@ export default function ReportDemo() {
             <span>На главную</span>
           </Link>
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white">i</div>
+            <img src="/logo.jpg" alt="imarsen" className="w-8 h-8 rounded-lg object-cover border border-white/15" />
             <span className="font-semibold tracking-tight text-white">imarsen</span>
           </Link>
           <Link to="/#pricing" className="btn-primary px-4 py-2 rounded-lg text-sm font-medium">Заказать</Link>
