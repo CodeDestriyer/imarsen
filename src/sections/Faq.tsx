@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, HelpCircle, Send, MessageSquare } from 'lucide-react';
+import { ChevronDown, HelpCircle } from 'lucide-react';
 import { Reveal } from '@/components/Reveal';
 import { faqs } from '@/data/content';
 
@@ -52,28 +52,6 @@ export function Faq() {
           {faqs.map((f, i) => (
             <FaqItem key={f.q} q={f.q} a={f.a} defaultOpen={i === 0} />
           ))}
-        </div>
-
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Reveal>
-            <a
-              href="https://t.me/+OBtlpNOrmPU1MTFk"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="glass rounded-xl border border-white/10 p-6 h-full block hover:border-white/20 transition"
-            >
-              <div className="icon-bubble mb-3"><Send /></div>
-              <h4 className="text-white font-semibold">Telegram-канал</h4>
-              <p className="text-gray-400 text-sm mt-1">Новости, обновления и обратная связь — в одном месте.</p>
-            </a>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <div className="glass rounded-xl border border-white/10 p-6 h-full">
-              <div className="icon-bubble mb-3"><MessageSquare /></div>
-              <h4 className="text-white font-semibold">Отзыв = скидка 20%</h4>
-              <p className="text-gray-400 text-sm mt-1">Оставь отзыв после анализа и получи промокод на 20% скидку на следующую покупку.</p>
-            </div>
-          </Reveal>
         </div>
       </div>
     </section>
