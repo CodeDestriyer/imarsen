@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Camera, AlertCircle, Loader2, Sparkles, RotateCcw } from 'lucide-react';
+import { X, Camera, AlertCircle, Loader2, Sparkles, RotateCcw, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   FaceLandmarker,
   FilesetResolver,
   type FaceLandmarkerResult,
 } from '@mediapipe/tasks-vision';
+import { analyzeFace, type Metrics, type Point } from '@/utils/faceAnalyzer';
+import { drawSnapshotOverlay } from '@/utils/drawOverlay';
 
 type State =
   | 'idle'
@@ -29,12 +32,14 @@ export function TryDemo({ open, onClose }: Props) {
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
   const rafRef = useRef<number>(0);
   const lastVideoTimeRef = useRef(-1);
+  const lastLandmarksRef = useRef<Point[] | null>(null);
 
   const [state, setState] = useState<State>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [faceDetected, setFaceDetected] = useState(false);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
 
-  const drawLandmarks = useCallback((result: FaceLandmarkerResult) => {
+  const drawLiveLandmarks = useCallback((result: FaceLandmarkerResult) => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video) return;
@@ -50,18 +55,19 @@ export function TryDemo({ open, onClose }: Props) {
 
     const faces = result.faceLandmarks;
     setFaceDetected(faces.length > 0);
-    if (!faces.length) return;
+    if (!faces.length) {
+      lastLandmarksRef.current = null;
+      return;
+    }
+    lastLandmarksRef.current = faces[0] as Point[];
 
     const w = canvas.width;
     const h = canvas.height;
-
-    for (const face of faces) {
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.85)';
-      for (const p of face) {
-        ctx.beginPath();
-        ctx.arc((1 - p.x) * w, p.y * h, 1.1, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    ctx.fillStyle = 'rgba(168, 85, 247, 0.85)';
+    for (const p of faces[0]) {
+      ctx.beginPath();
+      ctx.arc((1 - p.x) * w, p.y * h, 1.1, 0, Math.PI * 2);
+      ctx.fill();
     }
   }, []);
 
@@ -76,17 +82,18 @@ export function TryDemo({ open, onClose }: Props) {
       lastVideoTimeRef.current = video.currentTime;
       try {
         const result = lm.detectForVideo(video, performance.now());
-        drawLandmarks(result);
+        drawLiveLandmarks(result);
       } catch {
         // swallow per-frame errors
       }
     }
     rafRef.current = requestAnimationFrame(tick);
-  }, [drawLandmarks]);
+  }, [drawLiveLandmarks]);
 
   const start = useCallback(async () => {
     setState('loading');
     setErrorMsg('');
+    setMetrics(null);
 
     try {
       if (!landmarkerRef.current) {
@@ -139,19 +146,35 @@ export function TryDemo({ open, onClose }: Props) {
       streamRef.current = null;
     }
     const video = videoRef.current;
-    if (video) video.srcObject = null;
+    if (video) {
+      video.pause();
+      video.srcObject = null;
+    }
   }, []);
 
   const takeSnapshot = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const lm = lastLandmarksRef.current;
+    if (!video || !canvas || !lm) return;
+
+    video.pause();
+    const m = analyzeFace(lm);
+    setMetrics(m);
+    const ctx = canvas.getContext('2d');
+    if (ctx) drawSnapshotOverlay(ctx, lm, canvas.width, canvas.height, m);
     setState('snapshot');
   }, []);
 
   const retake = useCallback(() => {
+    setMetrics(null);
     if (!streamRef.current) {
       start();
       return;
     }
+    const video = videoRef.current;
+    if (video) video.play();
     setState('running');
     rafRef.current = requestAnimationFrame(tick);
   }, [start, tick]);
@@ -160,6 +183,7 @@ export function TryDemo({ open, onClose }: Props) {
     stop();
     setState('idle');
     setFaceDetected(false);
+    setMetrics(null);
     onClose();
   }, [stop, onClose]);
 
@@ -178,6 +202,7 @@ export function TryDemo({ open, onClose }: Props) {
       stop();
       setState('idle');
       setFaceDetected(false);
+      setMetrics(null);
     }
   }, [open, stop]);
 
@@ -189,7 +214,7 @@ export function TryDemo({ open, onClose }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
           onClick={handleClose}
         >
           <motion.div
@@ -197,7 +222,7 @@ export function TryDemo({ open, onClose }: Props) {
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.96, y: 10, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.2, 0.7, 0.2, 1] }}
-            className="relative glass-strong border border-white/15 rounded-2xl w-full max-w-3xl overflow-hidden"
+            className="relative glass-strong border border-white/15 rounded-2xl w-full max-w-3xl overflow-hidden my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
@@ -234,6 +259,12 @@ export function TryDemo({ open, onClose }: Props) {
                 </div>
               )}
 
+              {state === 'snapshot' && (
+                <div className="absolute top-3 right-3 telemetry bg-black/60 px-2 py-1 rounded">
+                  FRAME · ANALYZED
+                </div>
+              )}
+
               {state === 'idle' && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
                   <div className="icon-bubble mb-4"><Camera /></div>
@@ -256,16 +287,13 @@ export function TryDemo({ open, onClose }: Props) {
               )}
 
               {state === 'permission-denied' && (
-                <ErrorBlock
-                  title="Нет доступа к камере"
-                  desc="Разреши доступ в настройках браузера и обнови страницу."
-                />
+                <ErrorBlock title="Нет доступа к камере" desc="Разреши доступ в настройках браузера и обнови страницу." />
               )}
-              {state === 'no-camera' && (
-                <ErrorBlock title="Камера не найдена" desc="Подключи камеру и попробуй снова." />
-              )}
+              {state === 'no-camera' && <ErrorBlock title="Камера не найдена" desc="Подключи камеру и попробуй снова." />}
               {state === 'error' && <ErrorBlock title="Что-то пошло не так" desc={errorMsg || 'Попробуй ещё раз.'} />}
             </div>
+
+            {state === 'snapshot' && metrics && <ResultPanel m={metrics} />}
 
             <div className="px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3">
               <div className="text-xs text-gray-500 mono hidden sm:block">
@@ -288,9 +316,13 @@ export function TryDemo({ open, onClose }: Props) {
                     <button onClick={retake} className="btn-ghost px-4 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2">
                       <RotateCcw className="w-4 h-4" /> Заново
                     </button>
-                    <div className="text-xs text-gray-400 max-w-[180px] text-right">
-                      Геометрические метрики — в следующем апдейте
-                    </div>
+                    <Link
+                      to="/#pricing"
+                      onClick={handleClose}
+                      className="btn-primary px-5 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2"
+                    >
+                      Полный отчёт <ArrowRight className="w-4 h-4" />
+                    </Link>
                   </>
                 )}
               </div>
@@ -299,6 +331,47 @@ export function TryDemo({ open, onClose }: Props) {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function MetricChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="glass rounded-xl border border-white/10 p-3">
+      <div className="telemetry mb-1">{label}</div>
+      <div className="text-white font-semibold mono text-lg">{value}</div>
+      {hint && <div className="text-[11px] text-gray-500 mt-0.5">{hint}</div>}
+    </div>
+  );
+}
+
+function ResultPanel({ m }: { m: Metrics }) {
+  const grade =
+    m.overall >= 8.5 ? 'S' : m.overall >= 7.5 ? 'A' : m.overall >= 6.5 ? 'B' : m.overall >= 5.5 ? 'C' : 'D';
+  return (
+    <div className="px-5 py-5 border-t border-white/10 space-y-4">
+      <div className="flex items-center justify-between gap-4 glass-strong rounded-xl border border-purple-400/25 p-4">
+        <div>
+          <div className="telemetry">Общая оценка (демо)</div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-bold text-gradient mono">{m.overall.toFixed(1)}</span>
+            <span className="text-gray-500 text-sm">/10</span>
+            <span className="ml-2 px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-400/30 text-purple-300 mono text-xs">
+              {grade}-tier
+            </span>
+          </div>
+        </div>
+        <div className="text-right text-[11px] text-gray-500 max-w-[180px]">
+          Это упрощённый расчёт по 4 метрикам. Полный отчёт — по 17.
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <MetricChip label="Симметрия" value={`${m.symmetry}%`} hint="идеал — 100%" />
+        <MetricChip label="Наклон головы" value={`${Math.abs(m.tilt).toFixed(1)}°`} hint="ровно — 0°" />
+        <MetricChip label="FWHR" value={m.fwhr.toFixed(2)} hint="норма — 1.9" />
+        <MetricChip label="Угол челюсти" value={`${m.jawAngle.toFixed(0)}°`} hint="идеал — 130°" />
+      </div>
+    </div>
   );
 }
 
