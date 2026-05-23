@@ -19,7 +19,7 @@ export function Hero() {
           </Reveal>
           <Reveal delay={0.08} variant="blur">
             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-gradient leading-[1.05]">
-              Объективный AI-анализ внешности
+              Объективный ИИ-анализ внешности
             </h1>
           </Reveal>
           <Reveal delay={0.16}>
