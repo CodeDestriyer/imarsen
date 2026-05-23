@@ -1,4 +1,5 @@
 import { ArrowRight, Play, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Reveal } from '@/components/Reveal';
 import { Counter } from '@/components/Counter';
 
@@ -31,9 +32,9 @@ export function Hero() {
               <a href="#pricing" className="btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
                 Начать анализ за 199₽ <ArrowRight className="w-4 h-4" />
               </a>
-              <a href="#features" className="btn-ghost px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
+              <Link to="/report/demo" className="btn-ghost px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
                 <Play className="w-4 h-4" /> Смотреть пример отчёта
-              </a>
+              </Link>
             </div>
           </Reveal>
           <Reveal delay={0.32}>
