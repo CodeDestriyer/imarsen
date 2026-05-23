@@ -119,29 +119,46 @@ export function drawSnapshotOverlay(
   const fontSize = Math.max(15, Math.round(h * 0.028));
 
   drawPolyline(ctx, mapIdx(JAW_CONTOUR), 'rgba(99,102,241,0.9)', lineW);
-  drawPolyline(ctx, mapIdx(EYE_LEFT_CONTOUR), 'rgba(34,211,238,0.8)', thinW);
-  drawPolyline(ctx, mapIdx(EYE_RIGHT_CONTOUR), 'rgba(34,211,238,0.8)', thinW);
   drawPolyline(ctx, mapIdx(LIPS_OUTER), 'rgba(16,185,129,0.85)', thinW);
   drawPolyline(ctx, mapIdx(NOSE_BRIDGE), 'rgba(249,115,22,0.85)', thinW, true);
+
+  const hasIris = lm.length > 477;
+
+  if (hasIris) {
+    const drawIris = (centerIdx: number, rightIdx: number, leftIdx: number) => {
+      const c = toPx(lm[centerIdx]);
+      const r1 = toPx(lm[rightIdx]);
+      const r2 = toPx(lm[leftIdx]);
+      const radius = Math.hypot(r1.x - r2.x, r1.y - r2.y) / 2;
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = lineW * 0.8;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(34,211,238,0.9)';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, dotR * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    drawIris(468, 469, 470);
+    drawIris(473, 474, 475);
+  } else {
+    drawPolyline(ctx, mapIdx(EYE_LEFT_CONTOUR), 'rgba(34,211,238,0.8)', thinW);
+    drawPolyline(ctx, mapIdx(EYE_RIGHT_CONTOUR), 'rgba(34,211,238,0.8)', thinW);
+  }
 
   drawDots(
     ctx,
     [
-      ...mapIdx(EYE_LEFT_CONTOUR),
-      ...mapIdx(EYE_RIGHT_CONTOUR),
       ...mapIdx(LIPS_OUTER),
       ...mapIdx(JAW_CONTOUR),
     ],
-    'rgba(196,181,253,0.85)',
+    'rgba(196,181,253,0.7)',
     dotR,
   );
 
-  const RIGHT_LID_TOP = 159;
-  const RIGHT_LID_BOTTOM = 145;
-  const LEFT_LID_TOP = 386;
-  const LEFT_LID_BOTTOM = 374;
-  const lEye = toPx(mid(lm[RIGHT_LID_TOP], lm[RIGHT_LID_BOTTOM]));
-  const rEye = toPx(mid(lm[LEFT_LID_TOP], lm[LEFT_LID_BOTTOM]));
+  const lEye = hasIris ? toPx(lm[468]) : toPx(mid(lm[159], lm[145]));
+  const rEye = hasIris ? toPx(lm[473]) : toPx(mid(lm[386], lm[374]));
   drawPolyline(ctx, [lEye, rEye], '#22d3ee', lineW);
 
   const ys = lm.map((p) => p.y * h);
