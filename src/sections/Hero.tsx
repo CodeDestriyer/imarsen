@@ -24,7 +24,7 @@ export function Hero() {
           </Reveal>
           <Reveal delay={0.16}>
             <p className="mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto md:mx-0 leading-relaxed">
-              17 метрик качества, персональный роадмап улучшений на 30 дней и сравнение прогресса «до/после». Получите реальные рекомендации, а не пустые комплименты.
+              17 геометрических метрик привлекательности, персональная карта улучшений на 30 дней. Получи реальные рекомендации, а не пустые комплименты.
             </p>
           </Reveal>
           <Reveal delay={0.24}>
@@ -41,11 +41,16 @@ export function Hero() {
             <div className="mt-16 flex flex-wrap items-center justify-center md:justify-start gap-6 text-gray-500 text-sm">
               <div className="flex items-center gap-3">
                 <div className="flex -space-x-2">
-                  {[0, 1, 2, 3].map((i) => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-ink bg-gradient-to-br from-indigo-500 to-purple-500" />
+                  {[1, 2, 3, 4].map((i) => (
+                    <img
+                      key={i}
+                      src={`/avatars/ava${i}.jpg`}
+                      alt=""
+                      className="w-8 h-8 rounded-full border-2 border-ink object-cover"
+                    />
                   ))}
                 </div>
-                <span>Реферальная программа</span>
+                <span>Довольные клиенты</span>
               </div>
               <div className="h-4 w-px bg-gray-800 hidden sm:block" />
               <div className="rating-pill flex items-center gap-2 cursor-default">
