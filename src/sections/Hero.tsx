@@ -1,14 +1,9 @@
-import { lazy, Suspense, useState } from 'react';
-import { ArrowRight, Play, Star, Sparkles } from 'lucide-react';
+import { ArrowRight, Play, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Reveal } from '@/components/Reveal';
 import { Counter } from '@/components/Counter';
 
-const TryDemo = lazy(() => import('@/components/TryDemo').then((m) => ({ default: m.TryDemo })));
-
 export function Hero() {
-  const [demoOpen, setDemoOpen] = useState(false);
-
   return (
     <section id="top" className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
       <div className="hero-portrait">
@@ -34,14 +29,8 @@ export function Hero() {
           </Reveal>
           <Reveal delay={0.24}>
             <div className="mt-10 flex flex-col sm:flex-row items-center md:items-start justify-center md:justify-start gap-4">
-              <button
-                onClick={() => setDemoOpen(true)}
-                className="btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2"
-              >
-                <Sparkles className="w-4 h-4" /> Попробовать бесплатно
-              </button>
-              <a href="#pricing" className="btn-ghost px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
-                Тарифы <ArrowRight className="w-4 h-4" />
+              <a href="#pricing" className="btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
+                Давай начнём <ArrowRight className="w-4 h-4" />
               </a>
               <Link to="/report/demo" className="btn-ghost px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
                 <Play className="w-4 h-4" /> Пример отчёта
@@ -78,12 +67,6 @@ export function Hero() {
           </Reveal>
         </div>
       </div>
-
-      {demoOpen && (
-        <Suspense fallback={null}>
-          <TryDemo open={demoOpen} onClose={() => setDemoOpen(false)} />
-        </Suspense>
-      )}
     </section>
   );
 }
