@@ -6,8 +6,13 @@ import {
   EYE_RIGHT_CONTOUR,
   LIPS_OUTER,
   NOSE_BRIDGE,
-  mid,
 } from './faceAnalyzer';
+
+function centroid(idxs: readonly number[], lm: Point[]): Point {
+  let sx = 0, sy = 0;
+  for (const i of idxs) { sx += lm[i].x; sy += lm[i].y; }
+  return { x: sx / idxs.length, y: sy / idxs.length };
+}
 
 type Px = { x: number; y: number };
 
@@ -136,8 +141,8 @@ export function drawSnapshotOverlay(
     dotR,
   );
 
-  const lEye = toPx(mid(lm[IDX.LEFT_EYE_OUT], lm[IDX.LEFT_EYE_IN]));
-  const rEye = toPx(mid(lm[IDX.RIGHT_EYE_IN], lm[IDX.RIGHT_EYE_OUT]));
+  const lEye = toPx(centroid(EYE_LEFT_CONTOUR, lm));
+  const rEye = toPx(centroid(EYE_RIGHT_CONTOUR, lm));
   drawPolyline(ctx, [lEye, rEye], '#22d3ee', lineW);
 
   const ys = lm.map((p) => p.y * h);
