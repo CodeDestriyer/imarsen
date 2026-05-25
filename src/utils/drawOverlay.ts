@@ -1,23 +1,19 @@
 import type { Metrics, Point } from './faceAnalyzer';
-import {
-  IDX,
-  JAW_CONTOUR,
-  EYE_LEFT_CONTOUR,
-  EYE_RIGHT_CONTOUR,
-  LIPS_OUTER,
-  NOSE_BRIDGE,
-  mid,
-} from './faceAnalyzer';
+import { IDX, JAW_CONTOUR, LIPS_OUTER, mid } from './faceAnalyzer';
 
 type Px = { x: number; y: number };
 
-function drawPolyline(
-  ctx: CanvasRenderingContext2D,
-  pts: Px[],
-  color: string,
-  width: number,
-  dashed = false,
-) {
+const COLORS = {
+  jaw: 'rgba(192, 72, 72, 0.95)',
+  symAxis: 'rgba(214, 168, 92, 0.95)',
+  thirds: 'rgba(96, 168, 178, 0.85)',
+  fwhr: 'rgba(155, 110, 196, 0.95)',
+  canthalTilt: 'rgba(96, 184, 120, 0.95)',
+  lips: 'rgba(204, 102, 122, 0.95)',
+  dots: 'rgba(190, 210, 230, 0.45)',
+};
+
+function stroke(ctx: CanvasRenderingContext2D, pts: Px[], color: string, width: number, dashed = false) {
   if (pts.length < 2) return;
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
@@ -31,16 +27,16 @@ function drawPolyline(
   ctx.setLineDash([]);
 }
 
-function drawDots(ctx: CanvasRenderingContext2D, pts: Px[], color: string, radius: number) {
+function dots(ctx: CanvasRenderingContext2D, pts: Px[], color: string, r: number) {
   ctx.fillStyle = color;
   for (const p of pts) {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
-function drawPill(
+function pill(
   ctx: CanvasRenderingContext2D,
   anchor: Px,
   text: string,
@@ -55,13 +51,12 @@ function drawPill(
   const tw = ctx.measureText(text).width;
   const w = tw + padX * 2;
   const h = fontSize + padY * 2;
-
   let x = anchor.x;
   if (align === 'center') x -= w / 2;
   if (align === 'right') x -= w;
   const y = anchor.y - h / 2;
-
   const r = Math.min(h / 2, 10);
+
   ctx.fillStyle = bg;
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -72,7 +67,7 @@ function drawPill(
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
@@ -80,11 +75,9 @@ function drawPill(
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   ctx.fillText(text, x + padX, y + h / 2 + 1);
-
-  return { x, y, w, h };
 }
 
-function drawLeader(ctx: CanvasRenderingContext2D, from: Px, to: Px, color: string, width: number) {
+function leader(ctx: CanvasRenderingContext2D, from: Px, to: Px, color: string, width: number) {
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.setLineDash([width * 2, width * 1.5]);
@@ -93,7 +86,6 @@ function drawLeader(ctx: CanvasRenderingContext2D, from: Px, to: Px, color: stri
   ctx.lineTo(to.x, to.y);
   ctx.stroke();
   ctx.setLineDash([]);
-
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(from.x, from.y, width * 1.5, 0, Math.PI * 2);
@@ -111,94 +103,88 @@ export function drawSnapshotOverlay(
 
   const toPx = (p: Point): Px => ({ x: (1 - p.x) * w, y: p.y * h });
   const px = (i: number): Px => toPx(lm[i]);
-  const mapIdx = (idxs: readonly number[]): Px[] => idxs.map((i) => toPx(lm[i]));
+  const map = (idxs: readonly number[]): Px[] => idxs.map((i) => toPx(lm[i]));
 
   const ys = lm.map((p) => p.y * h);
   const faceTop = Math.min(...ys);
   const faceBottom = Math.max(...ys);
   const faceHeight = faceBottom - faceTop;
 
-  const EYE_OFFSET_Y = -faceHeight * 0.045;
   const JAW_OFFSET_Y = faceHeight * 0.06;
 
   const shift = (p: Px, dy: number): Px => ({ x: p.x, y: p.y + dy });
   const shiftAll = (pts: Px[], dy: number): Px[] => pts.map((p) => shift(p, dy));
 
   const lineW = Math.max(2.5, h * 0.0045);
-  const thinW = Math.max(1.5, h * 0.0022);
-  const dotR = Math.max(1.5, h * 0.003);
+  const thinW = Math.max(1.5, h * 0.0025);
+  const dotR = Math.max(1.2, h * 0.0022);
   const fontSize = Math.max(15, Math.round(h * 0.028));
 
-  drawPolyline(ctx, shiftAll(mapIdx(JAW_CONTOUR), JAW_OFFSET_Y), 'rgba(99,102,241,0.9)', lineW);
-  drawPolyline(ctx, mapIdx(LIPS_OUTER), 'rgba(16,185,129,0.85)', thinW);
-  drawPolyline(ctx, mapIdx(NOSE_BRIDGE), 'rgba(249,115,22,0.85)', thinW, true);
+  const forehead = px(IDX.FOREHEAD);
+  const glabella = px(168);
+  const noseTip = px(IDX.NOSE_TIP);
+  const subnasale = px(2);
+  const chin = shift(px(IDX.CHIN), JAW_OFFSET_Y);
 
-  const hasIris = lm.length > 477;
-
-  if (hasIris) {
-    const drawIris = (centerIdx: number, rightIdx: number, leftIdx: number) => {
-      const c = shift(toPx(lm[centerIdx]), EYE_OFFSET_Y);
-      const r1 = toPx(lm[rightIdx]);
-      const r2 = toPx(lm[leftIdx]);
-      const radius = Math.hypot(r1.x - r2.x, r1.y - r2.y) / 2;
-      ctx.strokeStyle = '#22d3ee';
-      ctx.lineWidth = lineW * 0.8;
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(34,211,238,0.9)';
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, dotR * 1.4, 0, Math.PI * 2);
-      ctx.fill();
-    };
-    drawIris(468, 469, 470);
-    drawIris(473, 474, 475);
-  } else {
-    drawPolyline(ctx, shiftAll(mapIdx(EYE_LEFT_CONTOUR), EYE_OFFSET_Y), 'rgba(34,211,238,0.8)', thinW);
-    drawPolyline(ctx, shiftAll(mapIdx(EYE_RIGHT_CONTOUR), EYE_OFFSET_Y), 'rgba(34,211,238,0.8)', thinW);
+  const thirdsY = [forehead.y, glabella.y, subnasale.y, chin.y];
+  const thirdsX1 = w * 0.025;
+  const thirdsX2 = w * 0.975;
+  for (const y of thirdsY) {
+    stroke(ctx, [{ x: thirdsX1, y }, { x: thirdsX2, y }], COLORS.thirds, thinW);
   }
 
-  drawDots(
+  const midX = (glabella.x + noseTip.x + chin.x) / 3;
+  stroke(
     ctx,
-    [
-      ...mapIdx(LIPS_OUTER),
-      ...shiftAll(mapIdx(JAW_CONTOUR), JAW_OFFSET_Y),
-    ],
-    'rgba(196,181,253,0.7)',
-    dotR,
+    [{ x: midX, y: forehead.y - 20 }, { x: midX, y: chin.y + 30 }],
+    COLORS.symAxis,
+    Math.max(2, h * 0.003),
+    true,
   );
 
-  const lEye = shift(hasIris ? toPx(lm[468]) : toPx(mid(lm[159], lm[145])), EYE_OFFSET_Y);
-  const rEye = shift(hasIris ? toPx(lm[473]) : toPx(mid(lm[386], lm[374])), EYE_OFFSET_Y);
-  drawPolyline(ctx, [lEye, rEye], '#22d3ee', lineW);
+  stroke(ctx, shiftAll(map(JAW_CONTOUR), JAW_OFFSET_Y), COLORS.jaw, lineW + 0.5);
+  stroke(ctx, map(LIPS_OUTER), COLORS.lips, thinW + 0.5);
+
+  const lCheek = px(IDX.LEFT_CHEEK);
+  const rCheek = px(IDX.RIGHT_CHEEK);
+  stroke(ctx, [lCheek, rCheek], COLORS.fwhr, thinW + 0.5);
+
+  const lEye = toPx(mid(lm[IDX.LEFT_EYE_OUT], lm[IDX.LEFT_EYE_IN]));
+  const rEye = toPx(mid(lm[IDX.RIGHT_EYE_IN], lm[IDX.RIGHT_EYE_OUT]));
+  stroke(ctx, [lEye, rEye], COLORS.canthalTilt, lineW);
+
+  dots(ctx, [...map(JAW_CONTOUR).map((p) => shift(p, JAW_OFFSET_Y)), ...map(LIPS_OUTER)], COLORS.dots, dotR);
 
   const marginX = Math.max(12, w * 0.02);
   const marginY = Math.max(12, h * 0.025);
+  const labelY1 = Math.max(marginY + fontSize, faceTop - 20);
+  const labelY2 = Math.min(h - marginY - fontSize, faceBottom + 20);
 
-  const tiltAnchor = { x: marginX, y: Math.max(marginY + fontSize, faceTop - 20) };
+  const tiltAnchor = { x: marginX, y: labelY1 };
   const eyeMid = { x: (lEye.x + rEye.x) / 2, y: (lEye.y + rEye.y) / 2 };
-  drawLeader(ctx, eyeMid, { x: tiltAnchor.x + fontSize * 3, y: tiltAnchor.y }, 'rgba(34,211,238,0.5)', thinW);
-  drawPill(ctx, tiltAnchor, `TILT ${m.tilt >= 0 ? '+' : ''}${m.tilt.toFixed(1)}°`, '#0e7490', '#ecfeff', fontSize, 'left');
+  leader(ctx, eyeMid, { x: tiltAnchor.x + fontSize * 3, y: tiltAnchor.y }, COLORS.canthalTilt, thinW);
+  pill(ctx, tiltAnchor, `TILT ${m.tilt >= 0 ? '+' : ''}${m.tilt.toFixed(1)}°`, '#365314', '#ecfccb', fontSize, 'left');
 
-  const symAnchor = { x: w - marginX, y: Math.max(marginY + fontSize, faceTop - 20) };
-  const noseTopPx = px(IDX.NOSE_TOP);
-  drawLeader(ctx, noseTopPx, { x: symAnchor.x - fontSize * 3, y: symAnchor.y }, 'rgba(249,115,22,0.5)', thinW);
-  drawPill(ctx, symAnchor, `SYM ${m.symmetry}%`, '#9a3412', '#fff7ed', fontSize, 'right');
+  const symAnchor = { x: w - marginX, y: labelY1 };
+  leader(ctx, { x: midX, y: glabella.y }, { x: symAnchor.x - fontSize * 3, y: symAnchor.y }, COLORS.symAxis, thinW);
+  pill(ctx, symAnchor, `SYM ${m.symmetry}%`, '#78350f', '#fef3c7', fontSize, 'right');
 
-  const fwhrAnchor = { x: marginX, y: Math.min(h - marginY - fontSize, faceBottom + 20) };
-  const cheekMid = {
-    x: (px(IDX.LEFT_CHEEK).x + px(IDX.RIGHT_CHEEK).x) / 2,
-    y: (px(IDX.LEFT_CHEEK).y + px(IDX.RIGHT_CHEEK).y) / 2,
-  };
-  drawLeader(ctx, cheekMid, { x: fwhrAnchor.x + fontSize * 3, y: fwhrAnchor.y }, 'rgba(168,85,247,0.5)', thinW);
-  drawPill(ctx, fwhrAnchor, `FWHR ${m.fwhr.toFixed(2)}`, '#6b21a8', '#faf5ff', fontSize, 'left');
+  const fwhrAnchor = { x: marginX, y: labelY2 };
+  const cheekMid = { x: (lCheek.x + rCheek.x) / 2, y: (lCheek.y + rCheek.y) / 2 };
+  leader(ctx, cheekMid, { x: fwhrAnchor.x + fontSize * 3, y: fwhrAnchor.y }, COLORS.fwhr, thinW);
+  pill(ctx, fwhrAnchor, `FWHR ${m.fwhr.toFixed(2)}`, '#581c87', '#f5e8ff', fontSize, 'left');
 
-  const jawAnchor = { x: w - marginX, y: Math.min(h - marginY - fontSize, faceBottom + 20) };
-  const chinPx = shift(px(IDX.CHIN), JAW_OFFSET_Y);
-  drawLeader(ctx, chinPx, { x: jawAnchor.x - fontSize * 3, y: jawAnchor.y }, 'rgba(99,102,241,0.5)', thinW);
-  drawPill(ctx, jawAnchor, `JAW ${m.jawAngle.toFixed(0)}°`, '#3730a3', '#eef2ff', fontSize, 'right');
+  const jawAnchor = { x: w - marginX, y: labelY2 };
+  leader(ctx, chin, { x: jawAnchor.x - fontSize * 3, y: jawAnchor.y }, COLORS.jaw, thinW);
+  pill(ctx, jawAnchor, `JAW ${m.jawAngle.toFixed(0)}°`, '#7f1d1d', '#fee2e2', fontSize, 'right');
 
-  const scoreText = `${m.overall.toFixed(1)} / 10`;
-  const scoreAnchor = { x: w / 2, y: marginY + fontSize * 0.8 };
-  drawPill(ctx, scoreAnchor, scoreText, 'rgba(0,0,0,0.7)', '#fff', Math.round(fontSize * 1.15), 'center');
+  pill(
+    ctx,
+    { x: w / 2, y: marginY + fontSize * 0.8 },
+    `${m.overall.toFixed(1)} / 10`,
+    'rgba(0,0,0,0.78)',
+    '#fff',
+    Math.round(fontSize * 1.18),
+    'center',
+  );
 }
