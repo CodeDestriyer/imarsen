@@ -16,7 +16,7 @@ export function drawSnapshotOverlay(
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 
-  const p = (i: number) => ({ x: (1 - lm[i].x) * w, y: lm[i].y * h });
+  const p = (i: number) => ({ x: lm[i].x * w, y: lm[i].y * h });
 
   const ys = lm.map((q) => q.y * h);
   const faceTop = Math.min(...ys);
@@ -27,7 +27,7 @@ export function drawSnapshotOverlay(
   ctx.fillStyle = 'rgba(190, 210, 230, 0.55)';
   for (const pt of lm) {
     ctx.beginPath();
-    ctx.arc((1 - pt.x) * w, pt.y * h, Math.max(0.8, scale * 1.0), 0, Math.PI * 2);
+    ctx.arc(pt.x * w, pt.y * h, Math.max(0.8, scale * 1.0), 0, Math.PI * 2);
     ctx.fill();
   }
 

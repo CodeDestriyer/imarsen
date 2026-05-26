@@ -14,12 +14,13 @@ type State =
   | 'idle'
   | 'loading'
   | 'running'
+  | 'analyzing'
   | 'snapshot'
   | 'permission-denied'
   | 'no-camera'
   | 'error';
 
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
+const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm';
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
@@ -29,10 +30,11 @@ export function TryDemo({ open, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const landmarkerRef = useRef<FaceLandmarker | null>(null);
+  const videoLandmarkerRef = useRef<FaceLandmarker | null>(null);
+  const imageLandmarkerRef = useRef<FaceLandmarker | null>(null);
+  const filesetRef = useRef<Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>> | null>(null);
   const rafRef = useRef<number>(0);
   const lastVideoTimeRef = useRef(-1);
-  const lastLandmarksRef = useRef<Point[] | null>(null);
 
   const [state, setState] = useState<State>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -55,11 +57,7 @@ export function TryDemo({ open, onClose }: Props) {
 
     const faces = result.faceLandmarks;
     setFaceDetected(faces.length > 0);
-    if (!faces.length) {
-      lastLandmarksRef.current = null;
-      return;
-    }
-    lastLandmarksRef.current = faces[0] as Point[];
+    if (!faces.length) return;
 
     const w = canvas.width;
     const h = canvas.height;
@@ -73,7 +71,7 @@ export function TryDemo({ open, onClose }: Props) {
 
   const tick = useCallback(() => {
     const video = videoRef.current;
-    const lm = landmarkerRef.current;
+    const lm = videoLandmarkerRef.current;
     if (!video || !lm) {
       rafRef.current = requestAnimationFrame(tick);
       return;
@@ -90,15 +88,33 @@ export function TryDemo({ open, onClose }: Props) {
     rafRef.current = requestAnimationFrame(tick);
   }, [drawLiveLandmarks]);
 
+  const ensureFileset = useCallback(async () => {
+    if (!filesetRef.current) {
+      filesetRef.current = await FilesetResolver.forVisionTasks(WASM_URL);
+    }
+    return filesetRef.current;
+  }, []);
+
+  const ensureImageLandmarker = useCallback(async () => {
+    if (imageLandmarkerRef.current) return imageLandmarkerRef.current;
+    const fileset = await ensureFileset();
+    imageLandmarkerRef.current = await FaceLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
+      runningMode: 'IMAGE',
+      numFaces: 1,
+    });
+    return imageLandmarkerRef.current;
+  }, [ensureFileset]);
+
   const start = useCallback(async () => {
     setState('loading');
     setErrorMsg('');
     setMetrics(null);
 
     try {
-      if (!landmarkerRef.current) {
-        const fileset = await FilesetResolver.forVisionTasks(WASM_URL);
-        landmarkerRef.current = await FaceLandmarker.createFromOptions(fileset, {
+      if (!videoLandmarkerRef.current) {
+        const fileset = await ensureFileset();
+        videoLandmarkerRef.current = await FaceLandmarker.createFromOptions(fileset, {
           baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
           runningMode: 'VIDEO',
           numFaces: 1,
@@ -136,7 +152,7 @@ export function TryDemo({ open, onClose }: Props) {
         setState('error');
       }
     }
-  }, [tick]);
+  }, [ensureFileset, tick]);
 
   const stop = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
@@ -152,20 +168,53 @@ export function TryDemo({ open, onClose }: Props) {
     }
   }, []);
 
-  const takeSnapshot = useCallback(() => {
+  const takeSnapshot = useCallback(async () => {
     cancelAnimationFrame(rafRef.current);
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const lm = lastLandmarksRef.current;
-    if (!video || !canvas || !lm) return;
+    if (!video || !canvas) return;
 
     video.pause();
-    const m = analyzeFace(lm);
-    setMetrics(m);
-    const ctx = canvas.getContext('2d');
-    if (ctx) drawSnapshotOverlay(ctx, lm, canvas.width, canvas.height, m);
-    setState('snapshot');
-  }, []);
+    setState('analyzing');
+
+    try {
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+
+      const off = document.createElement('canvas');
+      off.width = w;
+      off.height = h;
+      const offCtx = off.getContext('2d');
+      if (!offCtx) throw new Error('canvas context');
+      offCtx.translate(w, 0);
+      offCtx.scale(-1, 1);
+      offCtx.drawImage(video, 0, 0, w, h);
+      offCtx.setTransform(1, 0, 0, 1, 0, 0);
+
+      const landmarker = await ensureImageLandmarker();
+      const result = landmarker.detect(off);
+      if (!result.faceLandmarks.length) {
+        setErrorMsg('Лицо не найдено. Попробуй встать ближе к свету.');
+        setState('error');
+        return;
+      }
+      const lm = result.faceLandmarks[0] as Point[];
+      const m = analyzeFace(lm);
+      setMetrics(m);
+
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      const ctx = canvas.getContext('2d');
+      if (ctx) drawSnapshotOverlay(ctx, lm, w, h, m);
+      setState('snapshot');
+    } catch (e) {
+      console.error(e);
+      setErrorMsg('Не получилось проанализировать снимок');
+      setState('error');
+    }
+  }, [ensureImageLandmarker]);
 
   const retake = useCallback(() => {
     setMetrics(null);
@@ -190,10 +239,10 @@ export function TryDemo({ open, onClose }: Props) {
   useEffect(() => {
     return () => {
       stop();
-      if (landmarkerRef.current) {
-        landmarkerRef.current.close();
-        landmarkerRef.current = null;
-      }
+      videoLandmarkerRef.current?.close();
+      videoLandmarkerRef.current = null;
+      imageLandmarkerRef.current?.close();
+      imageLandmarkerRef.current = null;
     };
   }, [stop]);
 
@@ -240,7 +289,7 @@ export function TryDemo({ open, onClose }: Props) {
                 ref={videoRef}
                 playsInline
                 muted
-                className={`absolute inset-0 w-full h-full object-cover -scale-x-100 ${state === 'running' || state === 'snapshot' ? 'opacity-100' : 'opacity-0'}`}
+                className={`absolute inset-0 w-full h-full object-cover -scale-x-100 ${state === 'running' || state === 'analyzing' || state === 'snapshot' ? 'opacity-100' : 'opacity-0'}`}
               />
               <canvas
                 ref={canvasRef}
@@ -256,6 +305,14 @@ export function TryDemo({ open, onClose }: Props) {
               {state === 'running' && (
                 <div className="absolute top-3 right-3 telemetry bg-black/50 px-2 py-1 rounded">
                   LIVE · 468 pts
+                </div>
+              )}
+
+              {state === 'analyzing' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+                  <Loader2 className="w-8 h-8 text-emerald-300 animate-spin mb-3" />
+                  <p className="text-white font-medium">Анализирую снимок…</p>
+                  <p className="telemetry mt-1">IMAGE-mode detect</p>
                 </div>
               )}
 
@@ -299,6 +356,7 @@ export function TryDemo({ open, onClose }: Props) {
               <div className="text-xs text-gray-500 mono hidden sm:block">
                 {state === 'running' && faceDetected && '● tracking'}
                 {state === 'snapshot' && '◼ snapshot'}
+                {state === 'analyzing' && '◌ analyzing'}
                 {state === 'loading' && '◌ loading'}
               </div>
               <div className="flex items-center gap-3 ml-auto">
@@ -311,18 +369,20 @@ export function TryDemo({ open, onClose }: Props) {
                     <Sparkles className="w-4 h-4" /> Сделать снимок
                   </button>
                 )}
-                {state === 'snapshot' && (
+                {(state === 'snapshot' || state === 'error') && (
                   <>
                     <button onClick={retake} className="btn-ghost px-4 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2">
                       <RotateCcw className="w-4 h-4" /> Заново
                     </button>
-                    <Link
-                      to="/#pricing"
-                      onClick={handleClose}
-                      className="btn-primary px-5 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2"
-                    >
-                      Полный отчёт <ArrowRight className="w-4 h-4" />
-                    </Link>
+                    {state === 'snapshot' && (
+                      <Link
+                        to="/#pricing"
+                        onClick={handleClose}
+                        className="btn-primary px-5 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2"
+                      >
+                        Полный отчёт <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    )}
                   </>
                 )}
               </div>
