@@ -5,6 +5,32 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      (function () {
+        try {
+          var tg = window.Telegram && window.Telegram.WebApp;
+          if (tg) {
+            tg.ready();
+            tg.expand();
+            if (tg.setBackgroundColor) tg.setBackgroundColor('#05060a');
+            if (tg.setHeaderColor) tg.setHeaderColor('#05060a');
+            document.documentElement.classList.add('tg-webapp');
+          }
+        } catch (e) {
+          console.error('[tg] early init failed', e);
+        }
+      })();
+      window.addEventListener('error', function (e) {
+        var pre = document.getElementById('__boot_err__');
+        if (!pre) {
+          pre = document.createElement('pre');
+          pre.id = '__boot_err__';
+          pre.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#7f1d1d;color:#fff;padding:12px;font:12px monospace;white-space:pre-wrap;margin:0;max-height:50vh;overflow:auto';
+          document.body.appendChild(pre);
+        }
+        pre.textContent += '\n' + (e.message || e.error || 'unknown error');
+      });
+    </script>
     <title>imarsen — ИИ-анализ внешности | Объективная оценка 17 метрик</title>
     <meta name="description" content="imarsen — объективный ИИ-анализ внешности по 17 метрикам качества, персональный роадмап улучшений на 30 дней и сравнение прогресса до/после." />
     <link rel="preconnect" href="https://fonts.googleapis.com">

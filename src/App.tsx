@@ -23,13 +23,14 @@ function ScrollManager() {
 
 export default function App() {
   useTelegramWebApp();
+  const isTg = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
   return (
     <BrowserRouter>
       <ScrollManager />
       <div className="min-h-screen flex flex-col bg-ink text-gray-200 relative overflow-x-hidden">
         <ScrollProgress />
-        <Particles />
+        {!isTg && <Particles />}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/report/demo" element={<ReportDemo />} />
