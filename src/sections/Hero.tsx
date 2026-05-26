@@ -28,11 +28,11 @@ export function Hero() {
             </p>
           </Reveal>
           <Reveal delay={0.24}>
-            <div className="mt-10 flex flex-col sm:flex-row items-center md:items-start justify-center md:justify-start gap-4">
-              <a href="#pricing" className="btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
+            <div className="mt-10 flex flex-row flex-wrap items-center md:items-start justify-center md:justify-start gap-3 sm:gap-4">
+              <a href="#pricing" className="btn-primary px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base">
                 Давай начнём <ArrowRight className="w-4 h-4" />
               </a>
-              <Link to="/report/demo" className="btn-ghost px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2">
+              <Link to="/report/demo" className="btn-ghost px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base">
                 <Play className="w-4 h-4" /> Пример отчёта
               </Link>
             </div>
