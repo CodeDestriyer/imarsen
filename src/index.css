@@ -10,6 +10,11 @@
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
+    overscroll-behavior: none;
+  }
+  html.tg-webapp body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
   h1, h2, h3, h4, h5 {
     font-family: 'Inter Tight', 'Inter', sans-serif;

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Particles } from '@/components/Particles';
 import { ScrollProgress } from '@/components/ScrollProgress';
+import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import Home from '@/pages/Home';
 import ReportDemo from '@/pages/ReportDemo';
 
@@ -21,6 +22,8 @@ function ScrollManager() {
 }
 
 export default function App() {
+  useTelegramWebApp();
+
   return (
     <BrowserRouter>
       <ScrollManager />
