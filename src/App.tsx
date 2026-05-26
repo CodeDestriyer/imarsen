@@ -6,14 +6,20 @@ import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import Home from '@/pages/Home';
 import ReportDemo from '@/pages/ReportDemo';
 
+const VALID_ANCHOR = /^#[A-Za-z][\w-]*$/;
+
 function ScrollManager() {
   const { pathname, hash } = useLocation();
   useEffect(() => {
-    if (hash) {
-      const el = document.querySelector(hash);
-      if (el) {
-        setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 50);
-        return;
+    if (hash && VALID_ANCHOR.test(hash)) {
+      try {
+        const el = document.querySelector(hash);
+        if (el) {
+          setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 50);
+          return;
+        }
+      } catch {
+        // ignore invalid selectors (e.g. Telegram hash params)
       }
     }
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
