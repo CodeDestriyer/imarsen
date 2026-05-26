@@ -7,7 +7,15 @@ import {
   FilesetResolver,
   type FaceLandmarkerResult,
 } from '@mediapipe/tasks-vision';
-import { analyzeFace, type Metrics, type Point } from '@/utils/faceAnalyzer';
+import {
+  analyzeFace,
+  tierFor,
+  weakestOf,
+  SCORE_LABELS,
+  SCORE_TIPS,
+  type Metrics,
+  type Point,
+} from '@/utils/faceAnalyzer';
 import { drawSnapshotOverlay } from '@/utils/drawOverlay';
 
 type State =
@@ -207,7 +215,11 @@ export function TryDemo({ open, onClose }: Props) {
         canvas.height = h;
       }
       const ctx = canvas.getContext('2d');
-      if (ctx) drawSnapshotOverlay(ctx, lm, w, h, m);
+      if (ctx) {
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(off, 0, 0, w, h);
+        drawSnapshotOverlay(ctx, lm, w, h, m);
+      }
       setState('snapshot');
     } catch (e) {
       console.error(e);
@@ -289,7 +301,7 @@ export function TryDemo({ open, onClose }: Props) {
                 ref={videoRef}
                 playsInline
                 muted
-                className={`absolute inset-0 w-full h-full object-cover -scale-x-100 ${state === 'running' || state === 'analyzing' || state === 'snapshot' ? 'opacity-100' : 'opacity-0'}`}
+                className={`absolute inset-0 w-full h-full object-cover -scale-x-100 ${state === 'running' || state === 'analyzing' ? 'opacity-100' : 'opacity-0'}`}
               />
               <canvas
                 ref={canvasRef}
@@ -394,43 +406,52 @@ export function TryDemo({ open, onClose }: Props) {
   );
 }
 
-function MetricChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="glass rounded-xl border border-white/10 p-3">
-      <div className="telemetry mb-1">{label}</div>
-      <div className="text-white font-semibold mono text-lg">{value}</div>
-      {hint && <div className="text-[11px] text-gray-500 mt-0.5">{hint}</div>}
+    <div className="glass rounded-lg border border-white/10 p-2.5">
+      <div className="telemetry mb-1 text-[10px]">{label}</div>
+      <div className="text-white font-medium mono text-sm leading-tight">{value}</div>
     </div>
   );
 }
 
 function ResultPanel({ m }: { m: Metrics }) {
-  const grade =
-    m.overall >= 8.5 ? 'S' : m.overall >= 7.5 ? 'A' : m.overall >= 6.5 ? 'B' : m.overall >= 5.5 ? 'C' : 'D';
+  const tier = tierFor(m.overall);
+  const weak = weakestOf(m.scores);
+  const pct = (v: number) => Math.round(v * 100) + '%';
+  const tiltLabel =
+    m.canthalTilt > 2 ? 'позитивный' : m.canthalTilt < -2 ? 'негативный' : 'нейтральный';
+
   return (
-    <div className="px-5 py-5 border-t border-white/10 space-y-4">
-      <div className="flex items-center justify-between gap-4 glass-strong rounded-xl border border-purple-400/25 p-4">
-        <div>
-          <div className="telemetry">Общая оценка (демо)</div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-bold text-gradient mono">{m.overall.toFixed(1)}</span>
-            <span className="text-gray-500 text-sm">/10</span>
-            <span className="ml-2 px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-400/30 text-purple-300 mono text-xs">
-              {grade}-tier
-            </span>
-          </div>
-        </div>
-        <div className="text-right text-[11px] text-gray-500 max-w-[180px]">
-          Это упрощённый расчёт по 4 метрикам. Полный отчёт — по 17.
+    <div className="px-5 py-5 border-t border-white/10 space-y-3">
+      <div className="glass-strong rounded-xl border border-amber-400/25 p-4 flex items-baseline justify-between gap-3">
+        <div className="telemetry">Тир</div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-xl sm:text-2xl font-bold text-gradient">{tier.label}</span>
+          <span className="text-gray-500 text-xs mono">· {pct(m.overall)}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-        <MetricChip label="Симметрия" value={`${m.symmetry}%`} hint="идеал — 100%" />
-        <MetricChip label="Наклон головы" value={`${Math.abs(m.tilt).toFixed(1)}°`} hint="ровно — 0°" />
-        <MetricChip label="FWHR" value={m.fwhr.toFixed(2)} hint="норма — 1.9" />
-        <MetricChip label="Угол челюсти" value={`${m.jawAngle.toFixed(0)}°`} hint="идеал — 130°" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Metric label="Симметрия" value={pct(m.symmetry)} />
+        <Metric label="FWHR" value={m.fwhr.toFixed(2)} />
+        <Metric label="Угол челюсти" value={`${Math.round(m.jawAngle)}°`} />
+        <Metric label="Кантальный тилт" value={`${m.canthalTilt > 0 ? '+' : ''}${m.canthalTilt.toFixed(1)}°`} />
+        <Metric label="Трети" value={`${pct(m.thirds.upper)}/${pct(m.thirds.middle)}/${pct(m.thirds.lower)}`} />
+        <Metric label="Губы" value={`1:${m.lipRatio.toFixed(2)}`} />
+        <Metric label="Фильтрум" value={pct(m.philtrumRatio)} />
+        <Metric label="Подбородок" value={`1:${m.lipChinRatio.toFixed(2)}`} />
       </div>
+
+      <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>
+
+      {weak && (
+        <div className="glass rounded-xl border border-amber-400/25 p-4">
+          <div className="telemetry mb-1">Слабая точка</div>
+          <div className="text-white font-semibold mb-2">{SCORE_LABELS[weak.k]}</div>
+          <div className="text-gray-400 text-xs leading-relaxed">{SCORE_TIPS[weak.k]}</div>
+        </div>
+      )}
     </div>
   );
 }
