@@ -24,10 +24,10 @@ export function drawSnapshotOverlay(
   const JAW_DY = (faceBottom - faceTop) * 0.06;
   const sh = (pt: { x: number; y: number }, dy: number) => ({ x: pt.x, y: pt.y + dy });
 
-  ctx.fillStyle = 'rgba(190, 210, 230, 0.35)';
+  ctx.fillStyle = 'rgba(190, 210, 230, 0.55)';
   for (const pt of lm) {
     ctx.beginPath();
-    ctx.arc((1 - pt.x) * w, pt.y * h, Math.max(0.7, scale * 0.9), 0, Math.PI * 2);
+    ctx.arc((1 - pt.x) * w, pt.y * h, Math.max(0.8, scale * 1.0), 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -101,6 +101,29 @@ export function drawSnapshotOverlay(
   ctx.stroke();
 
   ctx.shadowBlur = 0;
+
+  const hasIris = lm.length > 477;
+  const rIris = hasIris
+    ? p(468)
+    : { x: (rI.x + rO.x) / 2, y: (lm[159].y * h + lm[145].y * h) / 2 };
+  const lIris = hasIris
+    ? p(473)
+    : { x: (lI.x + lO.x) / 2, y: (lm[386].y * h + lm[374].y * h) / 2 };
+
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+  ctx.shadowBlur = 6 * scale;
+  for (const iris of [rIris, lIris]) {
+    ctx.fillStyle = 'rgba(96, 184, 120, 1)';
+    ctx.beginPath();
+    ctx.arc(iris.x, iris.y, lw(5), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.beginPath();
+    ctx.arc(iris.x, iris.y, lw(2), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
   const accents: Array<[{ x: number; y: number }, string]> = [
     [rZyg, 'rgba(192, 72, 72, 1)'],
     [lZyg, 'rgba(192, 72, 72, 1)'],
