@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, Star, Lock } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Star } from 'lucide-react';
 import { Reveal } from '@/components/Reveal';
 import { reportDemo } from '@/data/report-demo';
 import { plans } from '@/data/content';
@@ -107,14 +107,16 @@ export default function ReportDemo() {
 
         <Reveal>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div className="glass rounded-2xl border border-white/10 p-6 flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="glass rounded-2xl border border-white/10 p-4 flex flex-col items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 pointer-events-none" />
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
-                  <Lock className="w-8 h-8 text-gray-600" />
-                </div>
-                <span className="text-sm text-white font-medium">Ваше фото</span>
-                <span className="telemetry mt-1">доступно после оплаты</span>
+              <div className="relative z-10 flex flex-col items-center w-full">
+                <img
+                  src="/example.jpg"
+                  alt="Пример"
+                  className="w-full max-w-[200px] aspect-square object-cover rounded-2xl border border-white/15"
+                />
+                <span className="text-sm text-white font-medium mt-3">Снимок-пример</span>
+                <span className="telemetry mt-1">demo · LTN</span>
               </div>
             </div>
             <div className="glass rounded-2xl border border-white/10 p-8 flex flex-col items-center justify-center">
