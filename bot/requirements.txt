@@ -1,0 +1,3 @@
+aiogram>=3.13,<4
+supabase>=2.7,<3
+python-dotenv>=1.0
