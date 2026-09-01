@@ -12,7 +12,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 // --- Конфиг (не секретный; меняется передеплоем) ---
 const PAID_MODE = false; // false = тест (талон бесплатно), true = оплата звёздами
 const TICKET_PRICE_STARS = 50; // цена талона в звёздах
-const ADMIN_IDS: number[] = [7256107332, 915335079]; // Telegram ID блогера/админов
+const ADMIN_IDS: number[] = [7256107332]; // Telegram ID блогера/админов
 
 const BTN_GET = "Получить талон 🎫";
 
