@@ -10,11 +10,11 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // --- Конфиг (не секретный; меняется передеплоем) ---
-const PAID_MODE = false; // false = тест (талон бесплатно), true = оплата звёздами
+const PAID_MODE = true; // false = тест (талон бесплатно), true = оплата звёздами
 const TICKET_PRICE_STARS = 50; // цена талона в звёздах
 const ADMIN_IDS: number[] = [7256107332]; // Telegram ID блогера/админов
 
-const BTN_GET = "Получить талон 🎫";
+const BTN_GET = "Мгновенный рейт⚡️";
 
 // --- Секреты / окружение ---
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN")!;
@@ -190,18 +190,16 @@ async function handleUpdate(update: any) {
   }
 
   // Прочее
-  await send(chatId, "Жми «Получить талон 🎫» и пришли фото 📸", { reply_markup: mainKb });
+  await send(chatId, "Жми «Мгновенный рейт⚡️» и пришли фото 📸", { reply_markup: mainKb });
 }
 
 async function handleCommand(cmd: string, chatId: number, from: any) {
   switch (cmd) {
     case "/start": {
-      const mode = PAID_MODE
-        ? `Один талон стоит <b>${TICKET_PRICE_STARS} ⭐</b>.`
-        : "Сейчас идёт тест — талон выдаётся <b>бесплатно</b>.";
       await send(chatId,
-        "Привет! 👋\n\nЭто очередь на <b>рейт твоей внешности</b> от эксперта в прямом эфире.\n\n" +
-        "Как попасть:\n1️⃣ Жми «Получить талон 🎫»\n2️⃣ Пришли своё фото\n3️⃣ Получи номер в очереди\n\n" + mode,
+        "Устал ждать своей <b>очереди</b>?\n\n" +
+        `Купи <b>мгновенный рейтинг</b> на стриме за ${TICKET_PRICE_STARS}⭐️\n\n` +
+        "Жми кнопку «<b>Мгновенный рейт</b>⚡️»",
         { reply_markup: mainKb });
       return;
     }
@@ -210,7 +208,7 @@ async function handleCommand(cmd: string, chatId: number, from: any) {
       return;
     case "/myticket": {
       const t = await getActiveTicket(from.id);
-      if (!t) { await send(chatId, "Активного талона нет. Жми «Получить талон 🎫»."); return; }
+      if (!t) { await send(chatId, "Активного талона нет. Жми «Мгновенный рейт⚡️»."); return; }
       if (t.status === "serving") { await send(chatId, "Ты сейчас на рейте 🔴"); return; }
       const pos = await positionInQueue(t.id);
       await send(chatId, `🎫 Талон <b>#${t.id}</b>. Позиция: <b>${pos}</b>.`);
