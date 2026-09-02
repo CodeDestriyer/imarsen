@@ -176,14 +176,21 @@ async function handleUpdate(update: any) {
     return;
   }
 
-  // Кнопка «Пропустить» под запросом комментария
+  // Инлайн-кнопки: «Пропустить» (черновик) + админ-пульт под карточкой /next
   if (update.callback_query) {
     const cq = update.callback_query;
     await tg("answerCallbackQuery", { callback_query_id: cq.id });
-    if (cq.data === "skip_comment" && cq.message) {
+    if (!cq.message) return;
+    const cbChat = cq.message.chat.id;
+    if (cq.data === "skip_comment") {
       const draft = await getDraft(cq.from.id);
-      if (draft) await submitDraft(cq.from, cq.message.chat.id, draft);
+      if (draft) await submitDraft(cq.from, cbChat, draft);
+      return;
     }
+    // Пульт: переиспользуем существующие команды (проверка админа — внутри handleCommand)
+    if (cq.data === "adm_next") return handleCommand("/next", cbChat, cq.from);
+    if (cq.data === "adm_queue") return handleCommand("/queue", cbChat, cq.from);
+    if (cq.data === "adm_stats") return handleCommand("/stats", cbChat, cq.from);
     return;
   }
 
@@ -332,6 +339,12 @@ async function handleCommand(cmd: string, chatId: number, from: any) {
         caption: `🔴 <b>Следующий на рейте</b>\nТалон #${nxt.id} · ${rowName(nxt)}\n${nxt.is_paid ? "Оплачено ⭐" : "Тест 🆓"}` +
           (nxt.comment ? `\n💬 ${esc(nxt.comment)}` : "") +
           `\n\n/next — следующий · /done — закрыть`,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "▶️ Следующий", callback_data: "adm_next" }],
+            [{ text: "📋 Очередь", callback_data: "adm_queue" }, { text: "💰 Стата", callback_data: "adm_stats" }],
+          ],
+        },
       });
       // Алерт юзеру: его очередь подошла
       await tg("sendMessage", {
