@@ -47,11 +47,37 @@ async function tg(method: string, payload: Record<string, unknown>) {
 const send = (chat_id: number, text: string, extra: Record<string, unknown> = {}) =>
   tg("sendMessage", { chat_id, text, parse_mode: "HTML", ...extra });
 
+// Экранирование HTML (имена и комментарии — свободный текст, могут содержать < > &)
+function esc(s: string): string {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 // --- Хелперы БД ---
 function rowName(r: any): string {
-  let name = r.first_name || "Гость";
-  if (r.username) name += ` (@${r.username})`;
+  let name = esc(r.first_name || "Гость");
+  if (r.username) name += ` (@${esc(r.username)})`;
   return name;
+}
+
+// --- Черновики (фото ждёт комментарий) ---
+async function getDraft(userId: number) {
+  const { data } = await supabase.from("rate_drafts").select("*").eq("tg_user_id", userId).limit(1);
+  return data && data.length ? data[0] : null;
+}
+
+async function upsertDraft(u: any, photoFileId: string) {
+  await supabase.from("rate_drafts").upsert({
+    tg_user_id: u.id,
+    username: u.username ?? null,
+    first_name: u.first_name ?? null,
+    photo_file_id: photoFileId,
+    comment: null,
+    created_at: new Date().toISOString(),
+  });
+}
+
+async function deleteDraft(userId: number) {
+  await supabase.from("rate_drafts").delete().eq("tg_user_id", userId);
 }
 
 async function getActiveTicket(userId: number) {
@@ -71,7 +97,8 @@ async function positionInQueue(ticketId: number): Promise<number> {
 }
 
 async function createTicket(u: any, photoFileId: string, isPaid: boolean,
-                            amount: number, chargeId: string | null) {
+                            amount: number, chargeId: string | null,
+                            comment: string | null = null) {
   const { data, error } = await supabase.from("rate_tickets").insert({
     tg_user_id: u.id,
     username: u.username ?? null,
@@ -80,6 +107,7 @@ async function createTicket(u: any, photoFileId: string, isPaid: boolean,
     is_paid: isPaid,
     amount_stars: amount,
     payment_charge_id: chargeId,
+    comment: comment,
     status: "waiting",
   }).select().single();
   if (error) throw error;
@@ -107,11 +135,35 @@ async function notifyAdmins(ticket: any, photoFileId: string) {
   const caption =
     `🔔 <b>Новый в очереди</b>\n` +
     `Талон #${ticket.id} · ${rowName(ticket)}\n` +
-    (ticket.is_paid ? `Оплачено ${ticket.amount_stars}⭐` : "Тест 🆓");
+    (ticket.is_paid ? `Оплачено ${ticket.amount_stars}⭐` : "Тест 🆓") +
+    (ticket.comment ? `\n💬 ${esc(ticket.comment)}` : "");
   for (const adminId of ADMIN_IDS) {
     if (adminId === ticket.tg_user_id) continue; // не шлём тому, кто сам взял талон
     await tg("sendPhoto", { chat_id: adminId, photo: photoFileId, parse_mode: "HTML", caption });
   }
+}
+
+// Завершить заявку из черновика: тест -> сразу в очередь, платно -> счёт
+async function submitDraft(from: any, chatId: number, draft: any) {
+  if (!PAID_MODE) {
+    const t = await createTicket(from, draft.photo_file_id, false, 0, null, draft.comment);
+    await deleteDraft(from.id);
+    const pos = await positionInQueue(t.id);
+    await send(chatId,
+      `🎫 Талон <b>#${t.id}</b> твой!\nПозиция в очереди: <b>${pos}</b>.\n\nЖди вызова в эфире 🔴 (тест-режим, бесплатно).`,
+      { reply_markup: mainKb });
+    await notifyAdmins(t, draft.photo_file_id);
+    return;
+  }
+  // Платный режим: выставляем счёт. Фото/коммент остаются в черновике до оплаты.
+  await tg("sendInvoice", {
+    chat_id: chatId,
+    title: "VIP-талон на рейт",
+    description: `Проход без очереди на рейт внешности в прямом эфире. Стоимость: ${TICKET_PRICE_STARS}⭐️.`,
+    payload: "rate",
+    currency: "XTR",
+    prices: [{ label: "VIP-талон", amount: TICKET_PRICE_STARS }],
+  });
 }
 
 async function handleUpdate(update: any) {
@@ -124,57 +176,55 @@ async function handleUpdate(update: any) {
     return;
   }
 
+  // Кнопка «Пропустить» под запросом комментария
+  if (update.callback_query) {
+    const cq = update.callback_query;
+    await tg("answerCallbackQuery", { callback_query_id: cq.id });
+    if (cq.data === "skip_comment" && cq.message) {
+      const draft = await getDraft(cq.from.id);
+      if (draft) await submitDraft(cq.from, cq.message.chat.id, draft);
+    }
+    return;
+  }
+
   const msg = update.message;
   if (!msg) return;
   const chatId = msg.chat.id;
   const from = msg.from;
 
-  // Успешная оплата -> создаём талон (фото зашито в payload счёта)
+  // Успешная оплата -> создаём талон из черновика (фото + комментарий)
   if (msg.successful_payment) {
     const sp = msg.successful_payment;
-    const payload: string = sp.invoice_payload || "";
-    const photoFileId = payload.startsWith("rate:") ? payload.slice(5) : "";
-    if (!photoFileId) {
+    const draft = await getDraft(from.id);
+    if (!draft) {
       await send(chatId, "Оплата прошла ✅, но потерялось фото. Пришли фото ещё раз — талон закреплю без повторной оплаты.");
       return;
     }
     if (await getActiveTicket(from.id)) {
+      await deleteDraft(from.id);
       await send(chatId, "У тебя уже есть активный талон 🎫", { reply_markup: mainKb });
       return;
     }
-    const t = await createTicket(from, photoFileId, true, sp.total_amount, sp.telegram_payment_charge_id);
+    const t = await createTicket(from, draft.photo_file_id, true, sp.total_amount, sp.telegram_payment_charge_id, draft.comment);
+    await deleteDraft(from.id);
     const pos = await positionInQueue(t.id);
     await send(chatId,
       `Оплата прошла ✅\n\n🎫 VIP-талон <b>#${t.id}</b> твой!\nПозиция в очереди: <b>${pos}</b>.\n\nЖди вызова в прямом эфире 🔴`,
       { reply_markup: mainKb });
-    await notifyAdmins(t, photoFileId);
+    await notifyAdmins(t, draft.photo_file_id);
     return;
   }
 
-  // Фото -> заявка на талон
+  // Фото -> сохраняем черновик и просим комментарий
   if (msg.photo && msg.photo.length) {
     const photoFileId = msg.photo[msg.photo.length - 1].file_id; // самое крупное
     if (await getActiveTicket(from.id)) {
       await send(chatId, "У тебя уже есть активный талон 🎫 (посмотреть — /myticket)", { reply_markup: mainKb });
       return;
     }
-    if (!PAID_MODE) {
-      const t = await createTicket(from, photoFileId, false, 0, null);
-      const pos = await positionInQueue(t.id);
-      await send(chatId,
-        `🎫 Талон <b>#${t.id}</b> твой!\nПозиция в очереди: <b>${pos}</b>.\n\nЖди вызова в эфире 🔴 (тест-режим, бесплатно).`,
-        { reply_markup: mainKb });
-      await notifyAdmins(t, photoFileId);
-      return;
-    }
-    // Платный режим: счёт в звёздах, фото — в payload
-    await tg("sendInvoice", {
-      chat_id: chatId,
-      title: "VIP-талон на рейт",
-      description: `Проход без очереди на рейт внешности в прямом эфире. Стоимость: ${TICKET_PRICE_STARS}⭐️.`,
-      payload: `rate:${photoFileId}`,
-      currency: "XTR",
-      prices: [{ label: "VIP-талон", amount: TICKET_PRICE_STARS }],
+    await upsertDraft(from, photoFileId);
+    await send(chatId, "Напиши комментарий к фото✍️ (опционально)", {
+      reply_markup: { inline_keyboard: [[{ text: "Пропустить ⏭️", callback_data: "skip_comment" }]] },
     });
     return;
   }
@@ -201,6 +251,15 @@ async function handleUpdate(update: any) {
   if (text.startsWith("/")) {
     const cmd = text.split(/\s+/)[0].split("@")[0].toLowerCase();
     return handleCommand(cmd, chatId, from);
+  }
+
+  // Текст при наличии черновика -> это комментарий к фото
+  const draft = await getDraft(from.id);
+  if (draft) {
+    draft.comment = text.slice(0, 500);
+    await supabase.from("rate_drafts").update({ comment: draft.comment }).eq("tg_user_id", from.id);
+    await submitDraft(from, chatId, draft);
+    return;
   }
 
   // Прочее
@@ -270,7 +329,15 @@ async function handleCommand(cmd: string, chatId: number, from: any) {
         chat_id: chatId,
         photo: nxt.photo_file_id,
         parse_mode: "HTML",
-        caption: `🔴 <b>Следующий на рейте</b>\nТалон #${nxt.id} · ${rowName(nxt)}\n${nxt.is_paid ? "Оплачено ⭐" : "Тест 🆓"}\n\n/next — следующий · /done — закрыть`,
+        caption: `🔴 <b>Следующий на рейте</b>\nТалон #${nxt.id} · ${rowName(nxt)}\n${nxt.is_paid ? "Оплачено ⭐" : "Тест 🆓"}` +
+          (nxt.comment ? `\n💬 ${esc(nxt.comment)}` : "") +
+          `\n\n/next — следующий · /done — закрыть`,
+      });
+      // Алерт юзеру: его очередь подошла
+      await tg("sendMessage", {
+        chat_id: nxt.tg_user_id,
+        parse_mode: "HTML",
+        text: "🔴 <b>Твоя очередь!</b> Ты сейчас на рейте — смотри стрим 👀",
       });
       return;
     }
