@@ -296,10 +296,15 @@ async function handleCommand(cmd: string, chatId: number, from: any) {
       return;
     }
     case "/stats": {
-      const { data } = await supabase.from("rate_tickets").select("status");
+      const { data } = await supabase.from("rate_tickets").select("status, amount_stars");
       const c: Record<string, number> = { waiting: 0, serving: 0, done: 0, cancelled: 0 };
-      for (const r of data || []) c[r.status] = (c[r.status] || 0) + 1;
-      await send(chatId, `<b>Статистика:</b>\nВ очереди: ${c.waiting}\nНа рейте: ${c.serving}\nОбслужено: ${c.done}\nОтменено: ${c.cancelled}`);
+      let stars = 0;
+      for (const r of data || []) {
+        c[r.status] = (c[r.status] || 0) + 1;
+        stars += r.amount_stars || 0;
+      }
+      const zl = (stars * 9.75 / 100).toFixed(2); // 100⭐ ≈ 9.75 zł
+      await send(chatId, `<b>Статистика:</b>\nВ очереди: ${c.waiting}\nНа рейте: ${c.serving}\nОбслужено: ${c.done}\nОтменено: ${c.cancelled}\n\n💰 Собрано: <b>${stars}⭐</b> (≈ ${zl} zł)`);
       return;
     }
   }
