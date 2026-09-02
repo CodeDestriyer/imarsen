@@ -157,7 +157,7 @@ async function handleUpdate(update: any) {
     await tg("sendInvoice", {
       chat_id: chatId,
       title: "VIP-талон на рейт",
-      description: `Место в очереди на рейт внешности в прямом эфире. Стоимость: ${TICKET_PRICE_STARS} ⭐.`,
+      description: `Проход без очереди на рейт внешности в прямом эфире. Стоимость: ${TICKET_PRICE_STARS}⭐️.`,
       payload: `rate:${photoFileId}`,
       currency: "XTR",
       prices: [{ label: "VIP-талон", amount: TICKET_PRICE_STARS }],
