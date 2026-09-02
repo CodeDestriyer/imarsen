@@ -12,7 +12,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 // --- Конфиг (не секретный; меняется передеплоем) ---
 const PAID_MODE = true; // false = тест (талон бесплатно), true = оплата звёздами
 const TICKET_PRICE_STARS = 50; // цена талона в звёздах
-const ADMIN_IDS: number[] = [7256107332]; // Telegram ID блогера/админов
+const ADMIN_IDS: number[] = [7256107332, 915335079]; // Telegram ID блогера/админов
 
 const BTN_GET = "Мгновенный рейт⚡️";
 
@@ -102,6 +102,18 @@ async function currentServing() {
 // --- Обработка апдейта ---
 const isAdmin = (id: number) => ADMIN_IDS.includes(id);
 
+// Оповестить админов о новом человеке в очереди (с его фото)
+async function notifyAdmins(ticket: any, photoFileId: string) {
+  const caption =
+    `🔔 <b>Новый в очереди</b>\n` +
+    `Талон #${ticket.id} · ${rowName(ticket)}\n` +
+    (ticket.is_paid ? `Оплачено ${ticket.amount_stars}⭐` : "Тест 🆓");
+  for (const adminId of ADMIN_IDS) {
+    if (adminId === ticket.tg_user_id) continue; // не шлём тому, кто сам взял талон
+    await tg("sendPhoto", { chat_id: adminId, photo: photoFileId, parse_mode: "HTML", caption });
+  }
+}
+
 async function handleUpdate(update: any) {
   // Подтверждение оплаты (обязательно в течение 10 сек)
   if (update.pre_checkout_query) {
@@ -135,6 +147,7 @@ async function handleUpdate(update: any) {
     await send(chatId,
       `Оплата прошла ✅\n\n🎫 VIP-талон <b>#${t.id}</b> твой!\nПозиция в очереди: <b>${pos}</b>.\n\nЖди вызова в прямом эфире 🔴`,
       { reply_markup: mainKb });
+    await notifyAdmins(t, photoFileId);
     return;
   }
 
@@ -151,6 +164,7 @@ async function handleUpdate(update: any) {
       await send(chatId,
         `🎫 Талон <b>#${t.id}</b> твой!\nПозиция в очереди: <b>${pos}</b>.\n\nЖди вызова в эфире 🔴 (тест-режим, бесплатно).`,
         { reply_markup: mainKb });
+      await notifyAdmins(t, photoFileId);
       return;
     }
     // Платный режим: счёт в звёздах, фото — в payload
