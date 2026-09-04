@@ -182,11 +182,6 @@ async function handleUpdate(update: any) {
     await tg("answerCallbackQuery", { callback_query_id: cq.id });
     if (!cq.message) return;
     const cbChat = cq.message.chat.id;
-    if (cq.data === "skip_comment") {
-      const draft = await getDraft(cq.from.id);
-      if (draft) await submitDraft(cq.from, cbChat, draft);
-      return;
-    }
     // Пульт: переиспользуем существующие команды (проверка админа — внутри handleCommand)
     if (cq.data === "adm_next") return handleCommand("/next", cbChat, cq.from);
     if (cq.data === "adm_queue") return handleCommand("/queue", cbChat, cq.from);
@@ -230,9 +225,7 @@ async function handleUpdate(update: any) {
       return;
     }
     await upsertDraft(from, photoFileId);
-    await send(chatId, "Напиши комментарий к фото✍️ (опционально)", {
-      reply_markup: { inline_keyboard: [[{ text: "Пропустить ⏭️", callback_data: "skip_comment" }]] },
-    });
+    await submitDraft(from, chatId, { photo_file_id: photoFileId, comment: null });
     return;
   }
 
@@ -258,15 +251,6 @@ async function handleUpdate(update: any) {
   if (text.startsWith("/")) {
     const cmd = text.split(/\s+/)[0].split("@")[0].toLowerCase();
     return handleCommand(cmd, chatId, from);
-  }
-
-  // Текст при наличии черновика -> это комментарий к фото
-  const draft = await getDraft(from.id);
-  if (draft) {
-    draft.comment = text.slice(0, 500);
-    await supabase.from("rate_drafts").update({ comment: draft.comment }).eq("tg_user_id", from.id);
-    await submitDraft(from, chatId, draft);
-    return;
   }
 
   // Прочее
