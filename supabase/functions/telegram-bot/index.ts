@@ -383,8 +383,8 @@ async function handleCommand(cmd: string, chatId: number, from: any) {
         c[r.status] = (c[r.status] || 0) + 1;
         stars += r.amount_stars || 0;
       }
-      const zl = (stars * 9.75 / 100).toFixed(2); // 100⭐ ≈ 9.75 zł
-      await send(chatId, `<b>Статистика:</b>\nВ очереди: ${c.waiting}\nНа рейте: ${c.serving}\nОбслужено: ${c.done}\nОтменено: ${c.cancelled}\n\n💰 Собрано: <b>${stars}⭐</b> (≈ ${zl} zł)`);
+      const usd = (stars * 0.014).toFixed(2); // 80 клиентов × 50⭐ = 4000⭐ ≈ $56 -> $0.014/⭐
+      await send(chatId, `<b>Статистика:</b>\nВ очереди: ${c.waiting}\nНа рейте: ${c.serving}\nОбслужено: ${c.done}\nОтменено: ${c.cancelled}\n\n💰 Собрано: <b>${stars}⭐</b> (≈ $${usd})`);
       return;
     }
   }
