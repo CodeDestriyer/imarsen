@@ -15,7 +15,6 @@ const TICKET_PRICE_STARS = 50; // цена талона в звёздах
 const ADMIN_IDS: number[] = [7256107332, 915335079]; // Telegram ID блогера/админов
 
 const BTN_GET = "Мгновенный рейт⚡️";
-const BTN_APP = "Приложение 🚀";
 
 // --- Секреты / окружение ---
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN")!;
@@ -30,15 +29,15 @@ const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const ACTIVE = ["waiting", "serving"];
-// Reply-клавиатура: слева «Мгновенный рейт», справа — кнопка WebApp (открывает приложение).
-// web_app-кнопка не шлёт текст, а открывает мини-приложение прямо в Telegram.
+// Reply-клавиатура: только «Мгновенный рейт». Приложение открывается нативной
+// кнопкой-меню слева от поля ввода (см. setMenuButton).
 const mainKb = {
-  keyboard: [[{ text: BTN_GET }, { text: BTN_APP, web_app: { url: WEBAPP_URL } }]],
+  keyboard: [[{ text: BTN_GET }]],
   resize_keyboard: true,
   input_field_placeholder: "Нажми кнопку, чтобы получить талон",
 };
 
-// Постоянная кнопка-меню слева от поля ввода → открывает то же приложение.
+// Постоянная кнопка-меню слева от поля ввода → открывает приложение (WebApp).
 async function setMenuButton(chatId: number) {
   await tg("setChatMenuButton", {
     chat_id: chatId,
@@ -278,7 +277,7 @@ async function handleCommand(cmd: string, chatId: number, from: any) {
       await send(chatId,
         "Устал ждать своей <b>очереди</b>?\n\n" +
         `Купи <b>мгновенный рейтинг</b> на стриме за ${TICKET_PRICE_STARS}⭐️\n\n` +
-        "Жми кнопку «<b>Мгновенный рейт</b>⚡️», а «<b>Приложение</b> 🚀» откроет наш сервис прямо в Telegram.",
+        "Жми кнопку «<b>Мгновенный рейт</b>⚡️», а кнопка «<b>Приложение</b>» слева от поля ввода откроет наш сервис прямо в Telegram.",
         { reply_markup: mainKb });
       return;
     }
