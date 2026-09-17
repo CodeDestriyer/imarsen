@@ -32,11 +32,8 @@ export function Hero({ onStart }: { onStart: () => void }) {
                 onClick={onStart}
                 className="btn-primary px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base"
               >
-                <Sparkles className="w-4 h-4" /> Бесплатный рейтинг
+                <Sparkles className="w-4 h-4" /> Бесплатный ИИ-рейтинг
               </button>
-              <a href="#rating" className="btn-ghost px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base">
-                Как это работает
-              </a>
             </div>
           </Reveal>
           <Reveal delay={0.32}>

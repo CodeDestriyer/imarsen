@@ -14,7 +14,7 @@ export function Nav({ onStart }: { onStart: () => void }) {
             onClick={onStart}
             className="btn-primary px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2"
           >
-            <Sparkles className="w-4 h-4" /> Бесплатный рейтинг
+            <Sparkles className="w-4 h-4" /> Бесплатный ИИ-рейтинг
           </button>
         </div>
       </div>

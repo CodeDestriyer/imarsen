@@ -25,19 +25,20 @@ export function FreeRating({ onStart }: { onStart: () => void }) {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <Reveal>
           <div className="glass-strong border border-white/15 rounded-3xl p-8 sm:p-12 text-center">
-            <div className="telemetry mb-3">FREE — instant</div>
+            <div className="telemetry mb-3">AI — automated test</div>
             <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              Бесплатный рейтинг внешности
+              Бесплатный ИИ-рейтинг внешности
             </h2>
             <p className="mt-4 text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              Наведи камеру или сделай снимок — ИИ разберёт черты лица по геометрическим
-              метрикам и даст объективную оценку. Бесплатно и без регистрации.
+              Автоматический ИИ-тест: наведи камеру или сделай снимок — нейросеть сама
+              разберёт черты лица по геометрическим метрикам и выдаст объективную оценку.
+              Без людей, без регистрации, бесплатно.
             </p>
             <button
               onClick={onStart}
               className="mt-8 btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-base"
             >
-              <Sparkles className="w-5 h-5" /> Запустить рейтинг
+              <Sparkles className="w-5 h-5" /> Запустить ИИ-рейтинг
             </button>
 
             <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-5 text-left">
