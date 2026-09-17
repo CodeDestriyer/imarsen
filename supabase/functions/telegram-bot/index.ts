@@ -277,7 +277,7 @@ async function handleCommand(cmd: string, chatId: number, from: any) {
       await send(chatId,
         "Устал ждать своей <b>очереди</b>?\n\n" +
         `Купи <b>мгновенный рейтинг</b> на стриме за ${TICKET_PRICE_STARS}⭐️\n\n` +
-        "Жми кнопку «<b>Мгновенный рейт</b>⚡️», а кнопка «<b>Приложение</b>» слева от поля ввода откроет наш сервис прямо в Telegram.",
+        "Жми кнопку «<b>Мгновенный рейт</b>⚡️»",
         { reply_markup: mainKb });
       return;
     }
