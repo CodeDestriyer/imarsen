@@ -15,22 +15,36 @@ const TICKET_PRICE_STARS = 50; // цена талона в звёздах
 const ADMIN_IDS: number[] = [7256107332, 915335079]; // Telegram ID блогера/админов
 
 const BTN_GET = "Мгновенный рейт⚡️";
+const BTN_APP = "Приложение 🚀";
 
 // --- Секреты / окружение ---
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN")!;
 const WEBHOOK_SECRET = Deno.env.get("WEBHOOK_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// URL мини-приложения (сайт). Задаётся секретом WEBAPP_URL в Supabase -> Edge Functions.
+// Пока это существующий лендинг; позже поменяем на отдельный WebApp — просто сменив секрет.
+const WEBAPP_URL = Deno.env.get("WEBAPP_URL") ?? "https://imarsen.vercel.app";
 
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const ACTIVE = ["waiting", "serving"];
+// Reply-клавиатура: слева «Мгновенный рейт», справа — кнопка WebApp (открывает приложение).
+// web_app-кнопка не шлёт текст, а открывает мини-приложение прямо в Telegram.
 const mainKb = {
-  keyboard: [[{ text: BTN_GET }]],
+  keyboard: [[{ text: BTN_GET }, { text: BTN_APP, web_app: { url: WEBAPP_URL } }]],
   resize_keyboard: true,
   input_field_placeholder: "Нажми кнопку, чтобы получить талон",
 };
+
+// Постоянная кнопка-меню слева от поля ввода → открывает то же приложение.
+async function setMenuButton(chatId: number) {
+  await tg("setChatMenuButton", {
+    chat_id: chatId,
+    menu_button: { type: "web_app", text: "Приложение", web_app: { url: WEBAPP_URL } },
+  });
+}
 
 // --- Вызов Telegram Bot API ---
 async function tg(method: string, payload: Record<string, unknown>) {
@@ -260,10 +274,11 @@ async function handleUpdate(update: any) {
 async function handleCommand(cmd: string, chatId: number, from: any) {
   switch (cmd) {
     case "/start": {
+      await setMenuButton(chatId);
       await send(chatId,
         "Устал ждать своей <b>очереди</b>?\n\n" +
         `Купи <b>мгновенный рейтинг</b> на стриме за ${TICKET_PRICE_STARS}⭐️\n\n` +
-        "Жми кнопку «<b>Мгновенный рейт</b>⚡️»",
+        "Жми кнопку «<b>Мгновенный рейт</b>⚡️», а «<b>Приложение</b> 🚀» откроет наш сервис прямо в Telegram.",
         { reply_markup: mainKb });
       return;
     }
