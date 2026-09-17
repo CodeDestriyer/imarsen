@@ -1,9 +1,8 @@
-import { ArrowRight, Play, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Sparkles, Star } from 'lucide-react';
 import { Reveal } from '@/components/Reveal';
 import { Counter } from '@/components/Counter';
 
-export function Hero() {
+export function Hero({ onStart }: { onStart: () => void }) {
   return (
     <section id="top" className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
       <div className="hero-portrait">
@@ -29,12 +28,15 @@ export function Hero() {
           </Reveal>
           <Reveal delay={0.24}>
             <div className="mt-10 flex flex-row flex-wrap items-center md:items-start justify-center md:justify-start gap-3 sm:gap-4">
-              <a href="#pricing" className="btn-primary px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base">
-                Давай начнём <ArrowRight className="w-4 h-4" />
+              <button
+                onClick={onStart}
+                className="btn-primary px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base"
+              >
+                <Sparkles className="w-4 h-4" /> Бесплатный рейтинг
+              </button>
+              <a href="#rating" className="btn-ghost px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base">
+                Как это работает
               </a>
-              <Link to="/report/demo" className="btn-ghost px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base">
-                <Play className="w-4 h-4" /> Пример отчёта
-              </Link>
             </div>
           </Reveal>
           <Reveal delay={0.32}>

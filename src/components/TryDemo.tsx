@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Camera, AlertCircle, Loader2, Sparkles, RotateCcw, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import {
   FaceLandmarker,
   FilesetResolver,
@@ -387,13 +386,15 @@ export function TryDemo({ open, onClose }: Props) {
                       <RotateCcw className="w-4 h-4" /> Заново
                     </button>
                     {state === 'snapshot' && (
-                      <Link
-                        to="/#pricing"
+                      <a
+                        href="https://t.me/+OBtlpNOrmPU1MTFk"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         onClick={handleClose}
                         className="btn-primary px-5 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2"
                       >
-                        Полный отчёт <ArrowRight className="w-4 h-4" />
-                      </Link>
+                        Полный разбор <ArrowRight className="w-4 h-4" />
+                      </a>
                     )}
                   </>
                 )}

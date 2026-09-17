@@ -4,7 +4,6 @@ import { Particles } from '@/components/Particles';
 import { ScrollProgress } from '@/components/ScrollProgress';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import Home from '@/pages/Home';
-import ReportDemo from '@/pages/ReportDemo';
 
 const VALID_ANCHOR = /^#[A-Za-z][\w-]*$/;
 
@@ -39,7 +38,6 @@ export default function App() {
         {!isTg && <Particles />}
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/report/demo" element={<ReportDemo />} />
         </Routes>
       </div>
     </BrowserRouter>
