@@ -29,7 +29,7 @@ export function PeopleCarousel() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     let raf = 0;
-    const SPEED = 0.5; // px/frame, right→left
+    const SPEED = 1.1; // px/frame, right→left
     const step = () => {
       if (!paused.current) {
         el.scrollLeft += SPEED;
