@@ -428,7 +428,7 @@ function ResultPanel({ m }: { m: Metrics }) {
       <div className="glass-strong rounded-xl border border-amber-400/25 p-4 flex items-baseline justify-between gap-3">
         <div className="telemetry">Тир</div>
         <div className="flex items-baseline gap-2">
-          <span className="text-xl sm:text-2xl font-bold text-gradient">{tier.label}</span>
+          <span className="text-xl sm:text-2xl font-bold text-white">{tier.label}</span>
           <span className="text-gray-500 text-xs mono">· {pct(m.overall)}</span>
         </div>
       </div>
