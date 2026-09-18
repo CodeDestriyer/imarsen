@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { Particles } from '@/components/Particles';
 import { ScrollProgress } from '@/components/ScrollProgress';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import Home from '@/pages/Home';
@@ -28,14 +27,12 @@ function ScrollManager() {
 
 export default function App() {
   useTelegramWebApp();
-  const isTg = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
   return (
     <BrowserRouter>
       <ScrollManager />
-      <div className="min-h-screen flex flex-col bg-ink text-gray-200 relative overflow-x-hidden">
+      <div className="min-h-screen flex flex-col bg-paper text-ink relative overflow-x-hidden">
         <ScrollProgress />
-        {!isTg && <Particles />}
         <Routes>
           <Route path="/" element={<Home />} />
         </Routes>

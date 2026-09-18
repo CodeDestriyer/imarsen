@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { Nav } from '@/sections/Nav';
 import { Hero } from '@/sections/Hero';
+import { PeopleCarousel } from '@/sections/PeopleCarousel';
 import { FreeRating } from '@/sections/FreeRating';
 import { Footer } from '@/sections/Footer';
 
@@ -12,11 +13,11 @@ export default function Home() {
 
   return (
     <>
-      <div className="bg-aurora" />
-      <div className="grain" aria-hidden />
+      <div className="bg-grid" aria-hidden />
       <Nav onStart={openDemo} />
       <main className="flex-1 relative z-10">
         <Hero onStart={openDemo} />
+        <PeopleCarousel onStart={openDemo} />
         <FreeRating onStart={openDemo} />
       </main>
       <Footer />

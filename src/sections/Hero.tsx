@@ -1,68 +1,62 @@
-import { Sparkles, Star } from 'lucide-react';
 import { Reveal } from '@/components/Reveal';
 import { Counter } from '@/components/Counter';
 
 export function Hero({ onStart }: { onStart: () => void }) {
   return (
-    <section id="top" className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-      <div className="hero-portrait">
-        <img src="/hero-model.jpg" alt="" loading="eager" />
-      </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div className="text-center md:text-left max-w-4xl md:max-w-2xl mx-auto md:mx-0">
+    <section id="top" className="relative pt-24 pb-14 lg:pt-36 lg:pb-24">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        {/* Running header — journal style */}
+        <Reveal variant="fade">
+          <div className="flex items-center justify-between border-b hairline pb-3 mb-10 eyebrow">
+            <span>imarsen · facial geometry lab</span>
+            <span className="hidden sm:inline">vol. 4 — 2026</span>
+          </div>
+        </Reveal>
+
+        <div className="max-w-3xl">
           <Reveal>
-            <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6 text-xs text-gray-300 border border-white/10">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <Counter to={50} suffix="+" /> анализов уже проведено
+            <div className="inline-flex items-center gap-2 mb-6 eyebrow">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+              N = <Counter to={50} suffix="+" /> проведённых анализов
             </div>
           </Reveal>
           <Reveal delay={0.08} variant="blur">
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-gradient leading-[1.05]">
-              Объективный ИИ-анализ внешности
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.04]">
+              Объективный <span className="serif italic font-normal">ИИ-анализ</span> внешности
             </h1>
           </Reveal>
           <Reveal delay={0.16}>
-            <p className="mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto md:mx-0 leading-relaxed">
-              17 геометрических метрик привлекательности, персональная карта улучшений на 30 дней. Получи реальные рекомендации, а не пустые комплименты.
+            <p className="mt-6 text-base sm:text-lg text-muted max-w-2xl leading-relaxed">
+              17 геометрических метрик привлекательности, персональная карта улучшений на 30 дней.
+              Получи реальные рекомендации, а не пустые комплименты.
             </p>
           </Reveal>
           <Reveal delay={0.24}>
-            <div className="mt-10 flex flex-row flex-wrap items-center md:items-start justify-center md:justify-start gap-3 sm:gap-4">
+            <div className="mt-9 flex flex-wrap items-center gap-3">
               <button
                 onClick={onStart}
-                className="btn-primary px-5 sm:px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-sm sm:text-base"
+                className="btn-primary px-6 py-3 rounded font-medium text-sm sm:text-base"
               >
-                <Sparkles className="w-4 h-4" /> Бесплатный ИИ-рейтинг
+                Бесплатный ИИ-рейтинг
               </button>
+              <span className="eyebrow">без регистрации · локально</span>
             </div>
           </Reveal>
+
+          {/* Metric masthead */}
           <Reveal delay={0.32}>
-            <div className="mt-16 flex flex-wrap items-center justify-center md:justify-start gap-6 text-gray-500 text-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3, 4].map((i) => (
-                    <img
-                      key={i}
-                      src={`/avatars/ava${i}.jpg`}
-                      alt=""
-                      className="w-8 h-8 rounded-full border-2 border-ink object-cover"
-                    />
-                  ))}
+            <dl className="mt-14 grid grid-cols-3 gap-px surface rounded overflow-hidden text-left">
+              {[
+                { k: 'Метрик', v: '17' },
+                { k: 'Точек лица', v: '68' },
+                { k: 'Рейтинг', v: '4.9' },
+              ].map((s) => (
+                <div key={s.k} className="bg-white px-4 py-4">
+                  <dt className="eyebrow">{s.k}</dt>
+                  <dd className="mono tnum text-2xl sm:text-3xl mt-1">{s.v}</dd>
                 </div>
-                <span>Довольные клиенты</span>
-              </div>
-              <div className="h-4 w-px bg-gray-800 hidden sm:block" />
-              <div className="rating-pill flex items-center gap-2 cursor-default">
-                <div className="flex text-yellow-400">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400" />
-                  ))}
-                </div>
-                <span className="mono">4.9</span>
-                <span>рейтинг</span>
-                <span className="rating-tooltip">★★★★★ от @kirill_m · 3 мин назад</span>
-              </div>
-            </div>
+              ))}
+            </dl>
           </Reveal>
         </div>
       </div>

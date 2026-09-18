@@ -1,4 +1,4 @@
-import { Sparkles, ShieldCheck, Zap, ScanFace } from 'lucide-react';
+import { ShieldCheck, Zap, ScanFace } from 'lucide-react';
 import { Reveal } from '@/components/Reveal';
 
 const points = [
@@ -21,34 +21,34 @@ const points = [
 
 export function FreeRating({ onStart }: { onStart: () => void }) {
   return (
-    <section id="rating" className="py-20 sm:py-28 relative">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="rating" className="py-16 sm:py-24 relative">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <Reveal>
-          <div className="glass-strong border border-white/15 rounded-3xl p-8 sm:p-12 text-center">
-            <div className="telemetry mb-3">AI — automated test</div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              Бесплатный ИИ-рейтинг внешности
+          <div className="surface rounded-lg p-6 sm:p-10">
+            <div className="section-index mb-2">02 — automated test</div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              Бесплатный <span className="serif italic font-normal">ИИ-рейтинг</span> внешности
             </h2>
-            <p className="mt-4 text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            <p className="mt-4 text-muted max-w-2xl leading-relaxed text-sm sm:text-base">
               Автоматический ИИ-тест: наведи камеру или сделай снимок — нейросеть сама
               разберёт черты лица по геометрическим метрикам и выдаст объективную оценку.
               Без людей, без регистрации, бесплатно.
             </p>
             <button
               onClick={onStart}
-              className="mt-8 btn-primary px-6 py-3 rounded-xl font-medium inline-flex items-center gap-2 text-base"
+              className="mt-7 btn-primary px-6 py-3 rounded font-medium text-sm sm:text-base"
             >
-              <Sparkles className="w-5 h-5" /> Запустить ИИ-рейтинг
+              Запустить ИИ-рейтинг
             </button>
 
-            <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-5 text-left">
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-px surface rounded overflow-hidden">
               {points.map((p) => {
                 const Icon = p.icon;
                 return (
-                  <div key={p.title} className="glass rounded-2xl p-5 border border-white/10">
-                    <div className="icon-bubble mb-3"><Icon /></div>
-                    <h3 className="text-white font-semibold text-sm">{p.title}</h3>
-                    <p className="text-gray-400 text-sm mt-1 leading-relaxed">{p.desc}</p>
+                  <div key={p.title} className="bg-white p-5">
+                    <div className="icon-bubble mb-3"><Icon className="w-5 h-5" /></div>
+                    <h3 className="text-ink font-semibold text-sm">{p.title}</h3>
+                    <p className="text-muted text-sm mt-1 leading-relaxed">{p.desc}</p>
                   </div>
                 );
               })}
