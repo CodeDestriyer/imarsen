@@ -3,7 +3,7 @@ import { Counter } from '@/components/Counter';
 
 export function Hero({ onStart }: { onStart: () => void }) {
   return (
-    <section id="top" className="relative pt-36 sm:pt-48 pb-12 sm:pb-16">
+    <section id="top" className="relative pt-32 sm:pt-44 pb-6 sm:pb-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-3xl">
           <Reveal>

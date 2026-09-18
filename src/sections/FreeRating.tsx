@@ -21,7 +21,7 @@ const points = [
 
 export function FreeRating() {
   return (
-    <section id="rating" className="py-12 sm:py-16 relative">
+    <section id="rating" className="py-6 sm:py-8 relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <Reveal>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px surface rounded-lg overflow-hidden">

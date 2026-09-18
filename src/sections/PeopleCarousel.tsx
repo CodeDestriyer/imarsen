@@ -54,12 +54,8 @@ export function PeopleCarousel({ onStart }: { onStart: () => void }) {
   const loop = [...PHOTOS, ...PHOTOS];
 
   return (
-    <section id="cases" className="py-12 sm:py-16 relative">
+    <section id="cases" className="pt-4 pb-8 sm:pt-6 sm:pb-10 relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-end mb-4">
-          <span className="eyebrow"><span className="med-plus">+</span> swipe</span>
-        </div>
-
         <div className="people-track" ref={trackRef}>
           {loop.map((src, i) => (
             <article className="people-card" key={i} aria-hidden>
