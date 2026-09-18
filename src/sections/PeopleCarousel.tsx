@@ -1,13 +1,23 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 /**
  * Автокарусель фотографий: непрерывно едет справа налево, её можно
  * посвайпать руками (на время касания автоскролл ставится на паузу).
  *
- * Фото: /public/people/1..11.jpg. Это реальные люди — перед публичным
+ * Фото: /public/people/*.jpg. Это реальные люди — перед публичным
  * запуском убедись, что есть право на использование (consent/сток).
  */
-const PHOTOS = Array.from({ length: 11 }, (_, i) => `/people/${i + 1}.jpg`);
+const PHOTO_IDS = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11];
+const PHOTOS = PHOTO_IDS.map((n) => `/people/${n}.jpg`);
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 export function PeopleCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -50,8 +60,9 @@ export function PeopleCarousel() {
     };
   }, []);
 
-  // дублируем для бесшовной петли
-  const loop = [...PHOTOS, ...PHOTOS];
+  // случайный порядок на загрузку + дублируем для бесшовной петли
+  const shuffled = useMemo(() => shuffle(PHOTOS), []);
+  const loop = [...shuffled, ...shuffled];
 
   return (
     <section id="cases" className="pt-4 pb-8 sm:pt-6 sm:pb-10 relative">
