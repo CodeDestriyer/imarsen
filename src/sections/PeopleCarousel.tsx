@@ -4,11 +4,10 @@ import { useEffect, useRef } from 'react';
  * Автокарусель фотографий: непрерывно едет справа налево, её можно
  * посвайпать руками (на время касания автоскролл ставится на паузу).
  *
- * ВНИМАНИЕ: /public/people/*.jpg — ВРЕМЕННЫЕ тест-плейсхолдеры
- * (кадрированы из чужой картинки, реальные люди). Перед публичным
- * запуском заменить на consent/сгенерированные фото и удалить исходные.
+ * Фото: /public/people/1..9.jpg. Это реальные люди — перед публичным
+ * запуском убедись, что есть право на использование (consent/сток).
  */
-const PHOTOS = Array.from({ length: 20 }, (_, i) => `/people/${i + 1}.jpg`);
+const PHOTOS = Array.from({ length: 9 }, (_, i) => `/people/${i + 1}.jpg`);
 
 export function PeopleCarousel({ onStart }: { onStart: () => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
