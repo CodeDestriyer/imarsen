@@ -3,12 +3,12 @@ import { Counter } from '@/components/Counter';
 
 export function Hero({ onStart }: { onStart: () => void }) {
   return (
-    <section id="top" className="relative pt-28 sm:pt-36 pb-12 sm:pb-16">
+    <section id="top" className="relative pt-36 sm:pt-48 pb-12 sm:pb-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-3xl">
           <Reveal>
-            <div className="inline-flex items-center gap-2 mb-6 live-dot">
-              N = <Counter to={50} suffix="+" /> оценок проведено
+            <div className="inline-flex items-center gap-2 mb-6 rounded-full border hairline bg-white px-3.5 py-1.5 live-dot">
+              <Counter to={50} suffix="+" /> оценок проведено
             </div>
           </Reveal>
           <Reveal delay={0.08} variant="blur">
