@@ -16,12 +16,12 @@ export function Hero({ onStart }: { onStart: () => void }) {
         <div className="max-w-3xl">
           <Reveal>
             <div className="inline-flex items-center gap-2 mb-6 live-dot">
-              N = <Counter to={50} suffix="+" /> обследований проведено
+              N = <Counter to={50} suffix="+" /> оценок проведено
             </div>
           </Reveal>
           <Reveal delay={0.08} variant="blur">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.04]">
-              Объективный <span className="serif italic font-normal">ИИ-анализ</span> внешности
+              Научный <span className="serif italic font-normal">ИИ-анализ</span> внешности
             </h1>
           </Reveal>
           <Reveal delay={0.16}>

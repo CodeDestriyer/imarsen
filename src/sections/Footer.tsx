@@ -10,7 +10,7 @@ export function Footer() {
             <span className="font-semibold text-ink">imarsen</span>
           </a>
           <p className="text-muted text-sm mt-4 leading-relaxed">
-            Объективный ИИ-анализ внешности по геометрическим метрикам. Попробуй бесплатный рейтинг прямо в браузере.
+            Научный ИИ-анализ внешности по геометрическим метрикам. Попробуй бесплатный рейтинг прямо в браузере.
           </p>
         </div>
         <a

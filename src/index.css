@@ -156,17 +156,18 @@
 .people-track::-webkit-scrollbar { display: none; }
 
 .people-card {
-  flex: 0 0 230px;
+  flex: 0 0 150px;
   background: #ffffff;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   user-select: none;
 }
+@media (min-width: 640px) { .people-card { flex-basis: 176px; } }
 
 .people-photo {
   position: relative;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: #f2f2f2;
 }
@@ -180,29 +181,21 @@
   content: '';
   position: absolute; inset: 0;
   background:
-    linear-gradient(to top, rgba(255,255,255,0.92) 0%, transparent 24%),
-    repeating-linear-gradient(0deg, transparent 0 21px, rgba(0,0,0,0.05) 21px 22px);
+    linear-gradient(to top, #fff 0%, rgba(255,255,255,0.4) 12%, transparent 30%),
+    repeating-linear-gradient(0deg, transparent 0 21px, rgba(0,0,0,0.045) 21px 22px);
   pointer-events: none;
 }
-.people-tag {
-  position: absolute; top: 9px; left: 9px;
+/* red index tick — mini medical/dataset marker, no name/score */
+.people-idx {
+  position: absolute; bottom: 8px; left: 8px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10px; letter-spacing: 0.08em;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-left: 2px solid var(--accent);
-  padding: 3px 7px; border-radius: 2px;
-  color: var(--ink);
+  font-size: 10px; letter-spacing: 0.06em;
+  color: var(--accent);
 }
-
-.metric-bar {
-  height: 4px; border-radius: 2px;
-  background: rgba(0, 0, 0, 0.09);
-  overflow: hidden;
-}
-.metric-bar > span {
-  display: block; height: 100%;
-  background: var(--accent);
+.people-idx::before {
+  content: ''; display: inline-block;
+  width: 5px; height: 5px; margin-right: 5px;
+  background: var(--accent); vertical-align: middle;
 }
 
 /* keep .cut-corner utilities available if referenced elsewhere */
