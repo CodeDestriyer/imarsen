@@ -1,4 +1,4 @@
-import { Send, PlayCircle, Music2 } from 'lucide-react';
+import { Send, PlayCircle, Music2, MousePointerClick } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -14,35 +14,44 @@ export function Footer() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 self-start">
+        <div className="flex flex-nowrap items-center gap-2 self-start">
           <a
             href="https://t.me/+OBtlpNOrmPU1MTFk"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-white bg-[#229ED9] hover:brightness-105 transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium text-white bg-[#229ED9] hover:brightness-105 transition"
           >
-            <Send className="w-4 h-4" /> Telegram
+            <Send className="w-4 h-4 shrink-0" /> Telegram
           </a>
           <a
             href="https://www.tiktok.com/@imarsennnnn"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-white bg-black hover:brightness-125 transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium text-white bg-black hover:brightness-125 transition"
           >
-            <Music2 className="w-4 h-4" /> TikTok
+            <Music2 className="w-4 h-4 shrink-0" /> TikTok
           </a>
           <a
             href="https://www.youtube.com/@imarsennnn"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-white bg-[#FF0000] hover:brightness-105 transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs sm:text-sm font-medium text-white bg-[#FF0000] hover:brightness-105 transition"
           >
-            <PlayCircle className="w-4 h-4" /> YouTube
+            <PlayCircle className="w-4 h-4 shrink-0" /> YouTube
           </a>
         </div>
       </div>
       <div className="border-t hairline py-5 text-center eyebrow">
-        © 2026 <span className="text-accent font-bold">Lookism solutions</span>
+        © 2026{' '}
+        <a
+          href="https://t.me/thevarkanis"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-accent font-bold hover:brightness-110"
+        >
+          Lookism solutions
+          <MousePointerClick className="w-3.5 h-3.5" />
+        </a>
       </div>
     </footer>
   );
