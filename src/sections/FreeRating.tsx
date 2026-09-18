@@ -21,7 +21,7 @@ const points = [
 
 export function FreeRating({ onStart }: { onStart: () => void }) {
   return (
-    <section id="rating" className="py-16 sm:py-24 relative">
+    <section id="rating" className="py-12 sm:py-16 relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <Reveal>
           <div className="surface rounded-lg p-6 sm:p-10">

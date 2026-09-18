@@ -55,26 +55,23 @@ export function PeopleCarousel({ onStart }: { onStart: () => void }) {
 
   return (
     <section id="cases" className="py-12 sm:py-16 relative">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
-        <div className="flex items-center justify-between px-1">
-          <span className="live-dot">rec · live intake</span>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-end mb-4">
           <span className="eyebrow"><span className="med-plus">+</span> swipe</span>
         </div>
-      </div>
 
-      <div className="people-track" ref={trackRef}>
-        {loop.map((src, i) => (
-          <article className="people-card" key={i} aria-hidden>
-            <div className="people-photo">
-              <img src={src} alt="" loading="lazy" draggable={false} />
-              <span className="people-idx">{String((i % PHOTOS.length) + 1).padStart(2, '0')}</span>
-            </div>
-          </article>
-        ))}
-      </div>
+        <div className="people-track" ref={trackRef}>
+          {loop.map((src, i) => (
+            <article className="people-card" key={i} aria-hidden>
+              <div className="people-photo">
+                <img src={src} alt="" loading="lazy" draggable={false} />
+                <span className="people-idx">{String((i % PHOTOS.length) + 1).padStart(2, '0')}</span>
+              </div>
+            </article>
+          ))}
+        </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="flex flex-wrap items-center gap-3 px-1">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <button onClick={onStart} className="btn-primary px-6 py-3 rounded font-medium text-sm">
             Проверить своё лицо
           </button>

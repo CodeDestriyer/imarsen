@@ -2,7 +2,7 @@ import { Send } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="relative z-10 border-t hairline mt-16">
+    <footer className="relative z-10 border-t hairline mt-4">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="max-w-md">
           <a href="#top" className="flex items-center gap-2.5">
