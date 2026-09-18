@@ -5,14 +5,6 @@ export function Hero({ onStart }: { onStart: () => void }) {
   return (
     <section id="top" className="relative pt-24 pb-14 lg:pt-36 lg:pb-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        {/* Running header — clinical chart style */}
-        <Reveal variant="fade">
-          <div className="flex items-center justify-between border-b hairline pb-3 mb-10 eyebrow">
-            <span><span className="med-plus">+</span> imarsen · клиника лицевой диагностики</span>
-            <span className="hidden sm:inline">протокол · 2026</span>
-          </div>
-        </Reveal>
-
         <div className="max-w-3xl">
           <Reveal>
             <div className="inline-flex items-center gap-2 mb-6 live-dot">
@@ -20,23 +12,22 @@ export function Hero({ onStart }: { onStart: () => void }) {
             </div>
           </Reveal>
           <Reveal delay={0.08} variant="blur">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.04]">
-              Научный <span className="serif italic font-normal">ИИ-анализ</span> внешности
+            <h1 className="serif font-semibold text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.06]">
+              Научный ИИ-анализ внешности
             </h1>
           </Reveal>
           <Reveal delay={0.16}>
             <p className="mt-6 text-base sm:text-lg text-muted max-w-2xl leading-relaxed">
-              17 геометрических метрик привлекательности, персональная карта улучшений на 30 дней.
-              Получи реальные рекомендации, а не пустые комплименты.
+              Набор геометрических метрик вместо пустых комплиментов.
             </p>
           </Reveal>
           <Reveal delay={0.24}>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
+            <div className="mt-9 flex flex-wrap items-center gap-4">
               <button
                 onClick={onStart}
-                className="btn-primary px-6 py-3 rounded font-medium text-sm sm:text-base"
+                className="btn-primary px-8 py-4 rounded-md font-medium text-lg sm:text-xl"
               >
-                Бесплатный ИИ-рейтинг
+                ИИ-рейтинг
               </button>
               <span className="eyebrow">без регистрации · локально</span>
             </div>

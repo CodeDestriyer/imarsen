@@ -6,14 +6,13 @@ export function Nav({ onStart }: { onStart: () => void }) {
           <a href="#top" className="flex items-center gap-2.5">
             <img src="/logo.jpg" alt="imarsen" className="w-7 h-7 rounded object-cover border hairline" />
             <span className="font-semibold tracking-tight text-ink">imarsen</span>
-            <span className="eyebrow hidden sm:inline ml-1"><span className="med-plus">+</span> клиника</span>
           </a>
 
           <button
             onClick={onStart}
-            className="btn-primary px-4 py-2 rounded text-sm font-medium"
+            className="btn-primary px-5 py-2.5 rounded-md text-sm sm:text-base font-medium"
           >
-            Бесплатный ИИ-рейтинг
+            ИИ-рейтинг
           </button>
         </div>
       </div>
