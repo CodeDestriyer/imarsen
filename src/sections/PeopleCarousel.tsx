@@ -1,17 +1,17 @@
-import { Reveal } from '@/components/Reveal';
+import { useEffect, useRef } from 'react';
 
 /**
- * Карусель «исследованных образцов».
- * Фото — плейсхолдеры из /public (замени на реальные снимки людей/знаменитостей:
- * положи файлы в /public/people/ и поменяй поле `img`; поле `name` — подпись под фото).
+ * Автокарусель «образцов»: непрерывно едет справа налево, но её можно
+ * посвайпать руками (на время касания автоскролл ставится на паузу).
+ * Фото — плейсхолдеры из /public; замени на реальные снимки в /public/people/.
  */
 type Subject = {
   id: string;
   name: string;
   img: string;
-  score: number; // общий балл 0..10
-  symmetry: number; // %
-  fwhr: number; // %
+  score: number;
+  symmetry: number;
+  fwhr: number;
 };
 
 const subjects: Subject[] = [
@@ -37,55 +37,93 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function PeopleCarousel({ onStart }: { onStart: () => void }) {
+function Card({ s }: { s: Subject }) {
   return (
-    <section id="cases" className="py-16 sm:py-24 relative">
+    <article className="people-card" aria-hidden>
+      <div className="people-photo">
+        <img src={s.img} alt="" loading="lazy" draggable={false} />
+        <span className="people-tag">CASE {s.id}</span>
+      </div>
+      <div className="p-3.5 space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h3 className="font-semibold text-sm text-ink">{s.name}</h3>
+          <span className="mono tnum text-lg text-accent">{s.score.toFixed(1)}</span>
+        </div>
+        <Metric label="Симметрия" value={s.symmetry} />
+        <Metric label="FWHR" value={s.fwhr} />
+      </div>
+    </article>
+  );
+}
+
+export function PeopleCarousel({ onStart }: { onStart: () => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const paused = useRef(false);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let raf = 0;
+    const SPEED = 0.5; // px per frame, right→left
+    const step = () => {
+      if (!paused.current) {
+        el.scrollLeft += SPEED;
+        const half = el.scrollWidth / 2;
+        if (el.scrollLeft >= half) el.scrollLeft -= half;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+
+    const hold = () => (paused.current = true);
+    const release = () => (paused.current = false);
+    el.addEventListener('pointerdown', hold);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('pointerleave', release);
+    el.addEventListener('touchstart', hold, { passive: true });
+    el.addEventListener('touchend', release);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener('pointerdown', hold);
+      el.removeEventListener('pointerup', release);
+      el.removeEventListener('pointercancel', release);
+      el.removeEventListener('pointerleave', release);
+      el.removeEventListener('touchstart', hold);
+      el.removeEventListener('touchend', release);
+    };
+  }, []);
+
+  // Дублируем список для бесшовной петли.
+  const loop = [...subjects, ...subjects];
+
+  return (
+    <section id="cases" className="py-12 sm:py-16 relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Reveal>
-          <div className="flex items-end justify-between border-b hairline pb-4 mb-8">
-            <div>
-              <div className="section-index mb-2">01 — dataset</div>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Разбор реальных <span className="serif italic font-normal">образцов</span>
-              </h2>
-              <p className="text-muted text-sm mt-2 max-w-xl leading-relaxed">
-                Каждое лицо прогнано через те же 17 геометрических метрик. Листай, чтобы
-                посмотреть, как модель раскладывает симметрию, FWHR и линию челюсти.
-              </p>
-            </div>
-            <span className="eyebrow hidden sm:block">swipe →</span>
-          </div>
-        </Reveal>
+        <div className="flex items-center justify-between px-1 mb-4">
+          <span className="live-dot">rec · live intake</span>
+          <span className="eyebrow"><span className="med-plus">+</span> swipe</span>
+        </div>
+      </div>
 
-        <Reveal delay={0.08} variant="fade">
-          <div className="people-track">
-            {subjects.map((s) => (
-              <article key={s.id} className="people-card">
-                <div className="people-photo">
-                  <img src={s.img} alt={s.name} loading="lazy" />
-                  <span className="people-tag">CASE {s.id}</span>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex items-baseline justify-between">
-                    <h3 className="font-semibold text-sm text-ink">{s.name}</h3>
-                    <span className="mono tnum text-lg text-accent">{s.score.toFixed(1)}</span>
-                  </div>
-                  <Metric label="Симметрия" value={s.symmetry} />
-                  <Metric label="FWHR" value={s.fwhr} />
-                </div>
-              </article>
-            ))}
-          </div>
-        </Reveal>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="people-track" ref={trackRef}>
+          {loop.map((s, i) => (
+            <Card key={`${s.id}-${i}`} s={s} />
+          ))}
+        </div>
+      </div>
 
-        <Reveal delay={0.12}>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <button onClick={onStart} className="btn-primary px-6 py-3 rounded font-medium text-sm">
-              Проверить своё лицо
-            </button>
-            <span className="eyebrow">результат за пару секунд</span>
-          </div>
-        </Reveal>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mt-6 flex flex-wrap items-center gap-3 px-1">
+          <button onClick={onStart} className="btn-primary px-6 py-3 rounded font-medium text-sm">
+            Проверить своё лицо
+          </button>
+          <span className="eyebrow">результат за пару секунд</span>
+        </div>
       </div>
     </section>
   );

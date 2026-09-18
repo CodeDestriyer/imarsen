@@ -4,9 +4,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: '#f3f2ed',
-        ink: '#16150f',
-        accent: '#2743d6',
+        paper: '#ffffff',
+        ink: '#000000',
+        accent: '#e11414',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

@@ -22,7 +22,7 @@ export function Footer() {
           <Send className="w-4 h-4" /> Telegram-канал
         </a>
       </div>
-      <div className="border-t hairline py-5 text-center eyebrow">© 2026 imarsen · facial geometry lab</div>
+      <div className="border-t hairline py-5 text-center eyebrow"><span className="med-plus">+</span> © 2026 imarsen · клиника лицевой диагностики</div>
     </footer>
   );
 }

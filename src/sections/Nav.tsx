@@ -6,7 +6,7 @@ export function Nav({ onStart }: { onStart: () => void }) {
           <a href="#top" className="flex items-center gap-2.5">
             <img src="/logo.jpg" alt="imarsen" className="w-7 h-7 rounded object-cover border hairline" />
             <span className="font-semibold tracking-tight text-ink">imarsen</span>
-            <span className="eyebrow hidden sm:inline ml-1">research lab</span>
+            <span className="eyebrow hidden sm:inline ml-1"><span className="med-plus">+</span> клиника</span>
           </a>
 
           <button

@@ -5,19 +5,18 @@ export function Hero({ onStart }: { onStart: () => void }) {
   return (
     <section id="top" className="relative pt-24 pb-14 lg:pt-36 lg:pb-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        {/* Running header — journal style */}
+        {/* Running header — clinical chart style */}
         <Reveal variant="fade">
           <div className="flex items-center justify-between border-b hairline pb-3 mb-10 eyebrow">
-            <span>imarsen · facial geometry lab</span>
-            <span className="hidden sm:inline">vol. 4 — 2026</span>
+            <span><span className="med-plus">+</span> imarsen · клиника лицевой диагностики</span>
+            <span className="hidden sm:inline">протокол · 2026</span>
           </div>
         </Reveal>
 
         <div className="max-w-3xl">
           <Reveal>
-            <div className="inline-flex items-center gap-2 mb-6 eyebrow">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              N = <Counter to={50} suffix="+" /> проведённых анализов
+            <div className="inline-flex items-center gap-2 mb-6 live-dot">
+              N = <Counter to={50} suffix="+" /> обследований проведено
             </div>
           </Reveal>
           <Reveal delay={0.08} variant="blur">

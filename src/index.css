@@ -5,12 +5,12 @@
 @layer base {
   :root {
     color-scheme: light;
-    --paper: #f3f2ed;
-    --ink: #16150f;
-    --muted: #6d6b62;
-    --line: rgba(20, 19, 15, 0.14);
-    --line-soft: rgba(20, 19, 15, 0.08);
-    --accent: #2743d6;
+    --paper: #ffffff;
+    --ink: #000000;
+    --muted: #5b5b5b;
+    --line: rgba(0, 0, 0, 0.16);
+    --line-soft: rgba(0, 0, 0, 0.07);
+    --accent: #e11414;
   }
   html, body {
     background: var(--paper);
@@ -58,7 +58,27 @@
     color: var(--ink);
     transition: background 0.15s ease, border-color 0.15s ease;
   }
-  .btn-ghost:hover { background: rgba(20, 19, 15, 0.04); border-color: var(--ink); }
+  .btn-ghost:hover { background: rgba(0, 0, 0, 0.04); border-color: var(--ink); }
+
+  /* Medical mini-elements */
+  .med-plus { color: var(--accent); font-weight: 700; }
+  .live-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .live-dot::before {
+    content: ''; width: 6px; height: 6px; border-radius: 999px;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(225, 20, 20, 0.5);
+    animation: pulse-dot 1.6s ease-out infinite;
+  }
+  @keyframes pulse-dot {
+    0% { box-shadow: 0 0 0 0 rgba(225, 20, 20, 0.5); }
+    70% { box-shadow: 0 0 0 7px rgba(225, 20, 20, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(225, 20, 20, 0); }
+  }
 
   .icon-bubble {
     width: 44px; height: 44px;
@@ -98,7 +118,7 @@
   padding: 1.5rem;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
-.feature-card:hover { border-color: var(--ink); transform: translateY(-2px); }
+.feature-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
 .scroll-progress {
   position: fixed; top: 0; left: 0;
@@ -122,63 +142,62 @@
   -webkit-mask-image: radial-gradient(ellipse 100% 60% at 50% 0%, #000 20%, transparent 80%);
 }
 
-/* People / research carousel */
+/* Auto-marquee carousel (moves right→left, still swipeable) */
 .people-track {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 4px 4px 16px;
-  scroll-padding-left: 4px;
+  padding: 4px;
+  cursor: grab;
 }
+.people-track:active { cursor: grabbing; }
 .people-track::-webkit-scrollbar { display: none; }
 
 .people-card {
-  scroll-snap-align: start;
-  flex: 0 0 78%;
-  max-width: 300px;
+  flex: 0 0 230px;
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
+  user-select: none;
 }
-@media (min-width: 640px) { .people-card { flex-basis: 46%; } }
-@media (min-width: 1024px) { .people-card { flex-basis: 30%; } }
 
 .people-photo {
   position: relative;
   aspect-ratio: 4 / 5;
   overflow: hidden;
-  background: #e9e7df;
+  background: #f2f2f2;
 }
 .people-photo img {
   width: 100%; height: 100%;
   object-fit: cover;
-  filter: grayscale(1) contrast(1.04);
+  filter: grayscale(1) contrast(1.05);
+  pointer-events: none;
 }
 .people-photo::after {
   content: '';
   position: absolute; inset: 0;
   background:
-    linear-gradient(to top, rgba(255,255,255,0.9) 0%, transparent 26%),
-    repeating-linear-gradient(0deg, transparent 0 22px, rgba(39,67,214,0.05) 22px 23px);
+    linear-gradient(to top, rgba(255,255,255,0.92) 0%, transparent 24%),
+    repeating-linear-gradient(0deg, transparent 0 21px, rgba(0,0,0,0.05) 21px 22px);
   pointer-events: none;
 }
 .people-tag {
-  position: absolute; top: 10px; left: 10px;
+  position: absolute; top: 9px; left: 9px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 10px; letter-spacing: 0.08em;
-  background: rgba(255,255,255,0.9);
+  background: #fff;
   border: 1px solid var(--line);
-  padding: 3px 7px; border-radius: 3px;
+  border-left: 2px solid var(--accent);
+  padding: 3px 7px; border-radius: 2px;
   color: var(--ink);
 }
 
 .metric-bar {
   height: 4px; border-radius: 2px;
-  background: rgba(20, 19, 15, 0.1);
+  background: rgba(0, 0, 0, 0.09);
   overflow: hidden;
 }
 .metric-bar > span {

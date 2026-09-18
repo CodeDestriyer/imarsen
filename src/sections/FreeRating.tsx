@@ -25,7 +25,7 @@ export function FreeRating({ onStart }: { onStart: () => void }) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <Reveal>
           <div className="surface rounded-lg p-6 sm:p-10">
-            <div className="section-index mb-2">02 — automated test</div>
+            <div className="section-index mb-2">02 — диагностика</div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Бесплатный <span className="serif italic font-normal">ИИ-рейтинг</span> внешности
             </h2>
@@ -45,8 +45,8 @@ export function FreeRating({ onStart }: { onStart: () => void }) {
               {points.map((p) => {
                 const Icon = p.icon;
                 return (
-                  <div key={p.title} className="bg-white p-5">
-                    <div className="icon-bubble mb-3"><Icon className="w-5 h-5" /></div>
+                  <div key={p.title} className="bg-white p-5 border-t-2 border-accent">
+                    <div className="icon-bubble mb-3 text-accent"><Icon className="w-5 h-5" /></div>
                     <h3 className="text-ink font-semibold text-sm">{p.title}</h3>
                     <p className="text-muted text-sm mt-1 leading-relaxed">{p.desc}</p>
                   </div>
