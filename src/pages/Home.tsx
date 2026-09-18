@@ -17,7 +17,7 @@ export default function Home() {
       <Nav onStart={openDemo} />
       <main className="flex-1 relative z-10">
         <Hero onStart={openDemo} />
-        <PeopleCarousel onStart={openDemo} />
+        <PeopleCarousel />
         <FreeRating />
       </main>
       <Footer />

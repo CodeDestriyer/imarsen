@@ -9,7 +9,7 @@ import { useEffect, useRef } from 'react';
  */
 const PHOTOS = Array.from({ length: 11 }, (_, i) => `/people/${i + 1}.jpg`);
 
-export function PeopleCarousel({ onStart }: { onStart: () => void }) {
+export function PeopleCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
   const paused = useRef(false);
 
@@ -65,13 +65,6 @@ export function PeopleCarousel({ onStart }: { onStart: () => void }) {
               </div>
             </article>
           ))}
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <button onClick={onStart} className="btn-primary px-6 py-3 rounded font-medium text-sm">
-            Проверить своё лицо
-          </button>
-          <span className="eyebrow">результат за пару секунд</span>
         </div>
       </div>
     </section>

@@ -156,14 +156,14 @@
 .people-track::-webkit-scrollbar { display: none; }
 
 .people-card {
-  flex: 0 0 150px;
+  flex: 0 0 200px;
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 6px;
   overflow: hidden;
   user-select: none;
 }
-@media (min-width: 640px) { .people-card { flex-basis: 176px; } }
+@media (min-width: 640px) { .people-card { flex-basis: 240px; } }
 
 .people-photo {
   position: relative;

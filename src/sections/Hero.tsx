@@ -8,7 +8,7 @@ export function Hero({ onStart }: { onStart: () => void }) {
         <div className="max-w-3xl">
           <Reveal>
             <div className="inline-flex items-center gap-2 mb-6 rounded-full border hairline bg-white px-3.5 py-1.5 live-dot">
-              <Counter to={50} suffix="+" /> оценок проведено
+              <Counter to={58} /> оценок проведено
             </div>
           </Reveal>
           <Reveal delay={0.08} variant="blur">
@@ -38,7 +38,7 @@ export function Hero({ onStart }: { onStart: () => void }) {
               {[
                 { k: 'Метрик', v: '8' },
                 { k: 'Точек лица', v: '68' },
-                { k: 'Рейтинг', v: '4.9' },
+                { k: 'Оценок', v: '58' },
               ].map((s) => (
                 <div key={s.k} className="bg-white px-4 py-4">
                   <dt className="eyebrow">{s.k}</dt>

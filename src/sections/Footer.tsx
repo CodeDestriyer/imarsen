@@ -19,7 +19,7 @@ export function Footer() {
             href="https://t.me/+OBtlpNOrmPU1MTFk"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 btn-primary px-5 py-2.5 rounded-md text-sm font-medium"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-white bg-[#229ED9] hover:brightness-105 transition"
           >
             <Send className="w-4 h-4" /> Telegram
           </a>
@@ -27,7 +27,7 @@ export function Footer() {
             href="https://www.tiktok.com/@imarsennnnn"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 btn-ghost px-5 py-2.5 rounded-md text-sm font-medium"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-white bg-black hover:brightness-125 transition"
           >
             <Music2 className="w-4 h-4" /> TikTok
           </a>
@@ -35,7 +35,7 @@ export function Footer() {
             href="https://www.youtube.com/@imarsennnn"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 btn-ghost px-5 py-2.5 rounded-md text-sm font-medium"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-white bg-[#FF0000] hover:brightness-105 transition"
           >
             <PlayCircle className="w-4 h-4" /> YouTube
           </a>
