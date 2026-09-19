@@ -11,13 +11,13 @@ export function Nav({ onStart }: { onStart: () => void }) {
           </a>
 
           <div className="flex items-center gap-2.5">
-            <ProfileButton />
             <button
               onClick={onStart}
               className="btn-primary px-5 py-2.5 rounded-md text-sm sm:text-base font-medium"
             >
               ИИ-рейтинг
             </button>
+            <ProfileButton />
           </div>
         </div>
       </div>

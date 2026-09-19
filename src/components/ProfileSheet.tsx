@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, ShieldCheck, Ticket, Star } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
@@ -17,7 +18,9 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   const photo = profile?.user.photoUrl || preview?.photoUrl;
   const username = profile?.user.username;
 
-  return (
+  // Портал в body: шапка с backdrop-blur создаёт stacking context, внутри
+  // которого fixed-оверлей уезжает под лендинг.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -138,6 +141,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

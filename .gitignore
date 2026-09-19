@@ -28,3 +28,5 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# Публичные значения проекта — anon-ключ и так попадает в бандл.
+!.env.production

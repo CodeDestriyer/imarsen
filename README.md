@@ -46,14 +46,19 @@ HMAC-подпись ключом бота и заводит/обновляет �
 
 ### Настройка
 
-1. Применить миграцию `supabase/migrations/20260919090000_miniapp_profiles.sql`.
-2. Задеплоить функцию: `supabase functions deploy miniapp`.
-3. Секрет в Supabase -> Edge Functions -> Secrets: `BOT_TOKEN` (тот же, что у бота).
-   `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` подставляются автоматически.
-4. Переменные фронта (Vercel -> Environment Variables, см. `.env.example`):
-   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+Проект Supabase — **IMARSEN** (`mranatvgldcooncqaaan`), тот же, где живёт бот.
 
-Без п.4 профиль выключен, лендинг работает как раньше.
+- [x] Миграция применена: таблицы `app_users` и `rate_results`, RLS включён.
+- [x] Функция `miniapp` задеплоена (`verify_jwt: true`).
+- [x] Переменные фронта лежат в `.env.production` — Vite подхватывает их на билде,
+      настраивать Vercel вручную не нужно. Оба значения публичные: anon-ключ и так
+      попадает в клиентский бандл, а доступа к данным не даёт (RLS без политик).
+- [ ] **Осталось вручную:** секрет `BOT_TOKEN` в Supabase -> Edge Functions ->
+      Secrets, тот же токен, что у бота. Через API секреты не выставляются.
+
+Пока `BOT_TOKEN` не задан, функция отвечает 401 на любой запрос: подпись
+`initData` не сходится. Иконка профиля появится, но профиль будет с ошибкой.
+Лендинг при этом работает как обычно.
 
 ## Деплой на Vercel
 
