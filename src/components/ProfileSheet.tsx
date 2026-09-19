@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, ShieldCheck, Ticket, Star } from 'lucide-react';
+import { X, Ticket, Star } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 
 const pct = (v: number) => Math.round(v * 100) + '%';
@@ -130,11 +130,6 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                       ))}
                     </ul>
                   )}
-                </div>
-
-                <div className="px-5 py-3 border-t hairline flex items-start gap-2 text-xs text-muted leading-relaxed">
-                  <ShieldCheck className="w-4 h-4 shrink-0 mt-px" />
-                  <span>Сохраняются только цифры метрик. Фото остаётся на твоём устройстве.</span>
                 </div>
               </>
             )}
