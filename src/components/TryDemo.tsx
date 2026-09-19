@@ -16,6 +16,7 @@ import {
   type Point,
 } from '@/utils/faceAnalyzer';
 import { drawSnapshotOverlay } from '@/utils/drawOverlay';
+import { useProfile } from '@/hooks/useProfile';
 
 type State =
   | 'idle'
@@ -42,6 +43,8 @@ export function TryDemo({ open, onClose }: Props) {
   const filesetRef = useRef<Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>> | null>(null);
   const rafRef = useRef<number>(0);
   const lastVideoTimeRef = useRef(-1);
+
+  const { recordRating } = useProfile();
 
   const [state, setState] = useState<State>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -209,6 +212,10 @@ export function TryDemo({ open, onClose }: Props) {
       const m = analyzeFace(lm);
       setMetrics(m);
 
+      // Сохраняем результат в профиль (только внутри Telegram; уходят одни цифры).
+      const tier = tierFor(m.overall);
+      recordRating(m, tier.key, tier.label);
+
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
@@ -225,7 +232,7 @@ export function TryDemo({ open, onClose }: Props) {
       setErrorMsg('Не получилось проанализировать снимок');
       setState('error');
     }
-  }, [ensureImageLandmarker]);
+  }, [ensureImageLandmarker, recordRating]);
 
   const retake = useCallback(() => {
     setMetrics(null);

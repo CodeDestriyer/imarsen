@@ -57,3 +57,11 @@ export function useTelegramWebApp() {
 export function getTgUser() {
   return window.Telegram?.WebApp?.initDataUnsafe?.user;
 }
+
+/**
+ * Подписанная строка initData. Именно её проверяет бэкенд —
+ * initDataUnsafe годится только для мгновенной отрисовки, ему верить нельзя.
+ */
+export function getTgInitData(): string {
+  return window.Telegram?.WebApp?.initData ?? '';
+}

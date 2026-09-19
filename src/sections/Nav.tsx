@@ -1,3 +1,5 @@
+import { ProfileButton } from '@/components/ProfileButton';
+
 export function Nav({ onStart }: { onStart: () => void }) {
   return (
     <nav className="fixed top-0 w-full z-50 bg-paper/85 backdrop-blur-md border-b hairline">
@@ -8,12 +10,15 @@ export function Nav({ onStart }: { onStart: () => void }) {
             <span className="font-semibold tracking-tight text-ink">imarsen</span>
           </a>
 
-          <button
-            onClick={onStart}
-            className="btn-primary px-5 py-2.5 rounded-md text-sm sm:text-base font-medium"
-          >
-            ИИ-рейтинг
-          </button>
+          <div className="flex items-center gap-2.5">
+            <ProfileButton />
+            <button
+              onClick={onStart}
+              className="btn-primary px-5 py-2.5 rounded-md text-sm sm:text-base font-medium"
+            >
+              ИИ-рейтинг
+            </button>
+          </div>
         </div>
       </div>
     </nav>

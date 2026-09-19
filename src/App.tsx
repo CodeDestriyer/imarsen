@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { ScrollProgress } from '@/components/ScrollProgress';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
+import { ProfileProvider } from '@/hooks/useProfile';
 import Home from '@/pages/Home';
 
 const VALID_ANCHOR = /^#[A-Za-z][\w-]*$/;
@@ -29,14 +30,16 @@ export default function App() {
   useTelegramWebApp();
 
   return (
-    <BrowserRouter>
-      <ScrollManager />
-      <div className="min-h-screen flex flex-col bg-paper text-ink relative overflow-x-hidden">
-        <ScrollProgress />
-        <Routes>
-          <Route path="/" element={<Home />} />
-        </Routes>
-      </div>
-    </BrowserRouter>
+    <ProfileProvider>
+      <BrowserRouter>
+        <ScrollManager />
+        <div className="min-h-screen flex flex-col bg-paper text-ink relative overflow-x-hidden">
+          <ScrollProgress />
+          <Routes>
+            <Route path="/" element={<Home />} />
+          </Routes>
+        </div>
+      </BrowserRouter>
+    </ProfileProvider>
   );
 }
