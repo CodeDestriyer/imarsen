@@ -35,8 +35,8 @@ export function drawSnapshotOverlay(
   ctx.lineWidth = lw(2.2);
   ctx.setLineDash([8 * scale, 6 * scale]);
   ctx.beginPath();
-  ctx.moveTo(metrics.midX * w, top.y - 20 * scale);
-  ctx.lineTo(metrics.midX * w, chin.y + 30 * scale);
+  ctx.moveTo(metrics.midX, top.y - 20 * scale);
+  ctx.lineTo(metrics.midX, chin.y + 30 * scale);
   ctx.stroke();
   ctx.setLineDash([]);
 

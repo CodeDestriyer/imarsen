@@ -12,6 +12,9 @@ import {
   weakestOf,
   SCORE_LABELS,
   SCORE_TIPS,
+  headPose,
+  isFrontal,
+  poseHint,
   type Metrics,
   type Point,
 } from '@/utils/faceAnalyzer';
@@ -46,6 +49,7 @@ export function TryDemo({ open, onClose }: Props) {
   const [state, setState] = useState<State>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [faceDetected, setFaceDetected] = useState(false);
+  const [poseWarning, setPoseWarning] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
 
   const drawLiveLandmarks = useCallback((result: FaceLandmarkerResult) => {
@@ -64,7 +68,16 @@ export function TryDemo({ open, onClose }: Props) {
 
     const faces = result.faceLandmarks;
     setFaceDetected(faces.length > 0);
-    if (!faces.length) return;
+    if (!faces.length) {
+      setPoseWarning(null);
+      return;
+    }
+
+    // Off-axis shots wreck symmetry, FWHR and canthal tilt, so only let the
+    // snapshot through when the head is roughly straight on. If the model gave
+    // us no transformation matrix, don't block the person.
+    const matrix = result.facialTransformationMatrixes?.[0]?.data;
+    setPoseWarning(matrix ? poseHint(headPose(matrix)) : null);
 
     const w = canvas.width;
     const h = canvas.height;
@@ -109,6 +122,7 @@ export function TryDemo({ open, onClose }: Props) {
       baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
       runningMode: 'IMAGE',
       numFaces: 1,
+      outputFacialTransformationMatrixes: true,
     });
     return imageLandmarkerRef.current;
   }, [ensureFileset]);
@@ -126,7 +140,7 @@ export function TryDemo({ open, onClose }: Props) {
           runningMode: 'VIDEO',
           numFaces: 1,
           outputFaceBlendshapes: false,
-          outputFacialTransformationMatrixes: false,
+          outputFacialTransformationMatrixes: true,
         });
       }
     } catch (e) {
@@ -205,8 +219,16 @@ export function TryDemo({ open, onClose }: Props) {
         setState('error');
         return;
       }
+
+      const snapMatrix = result.facialTransformationMatrixes?.[0]?.data;
+      if (snapMatrix && !isFrontal(headPose(snapMatrix))) {
+        setErrorMsg('Голова повёрнута — с такого ракурса метрики врут. Встань анфас и попробуй ещё раз.');
+        setState('error');
+        return;
+      }
+
       const lm = result.faceLandmarks[0] as Point[];
-      const m = analyzeFace(lm);
+      const m = analyzeFace(lm, w, h);
       setMetrics(m);
 
       if (canvas.width !== w || canvas.height !== h) {
@@ -243,6 +265,7 @@ export function TryDemo({ open, onClose }: Props) {
     stop();
     setState('idle');
     setFaceDetected(false);
+    setPoseWarning(null);
     setMetrics(null);
     onClose();
   }, [stop, onClose]);
@@ -262,6 +285,7 @@ export function TryDemo({ open, onClose }: Props) {
       stop();
       setState('idle');
       setFaceDetected(false);
+      setPoseWarning(null);
       setMetrics(null);
     }
   }, [open, stop]);
@@ -313,9 +337,15 @@ export function TryDemo({ open, onClose }: Props) {
                 </div>
               )}
 
+              {state === 'running' && faceDetected && poseWarning && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-500/90 text-black text-xs font-medium px-3 py-1.5 rounded-full">
+                  {poseWarning} — нужен анфас
+                </div>
+              )}
+
               {state === 'running' && (
                 <div className="absolute top-3 right-3 telemetry bg-black/50 px-2 py-1 rounded">
-                  LIVE · 468 pts
+                  LIVE · 478 pts
                 </div>
               )}
 
@@ -365,7 +395,7 @@ export function TryDemo({ open, onClose }: Props) {
 
             <div className="px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3">
               <div className="text-xs text-gray-500 mono hidden sm:block">
-                {state === 'running' && faceDetected && '● tracking'}
+                {state === 'running' && faceDetected && (poseWarning ? '● off-axis' : '● tracking')}
                 {state === 'snapshot' && '◼ snapshot'}
                 {state === 'analyzing' && '◌ analyzing'}
                 {state === 'loading' && '◌ loading'}
@@ -374,7 +404,7 @@ export function TryDemo({ open, onClose }: Props) {
                 {state === 'running' && (
                   <button
                     onClick={takeSnapshot}
-                    disabled={!faceDetected}
+                    disabled={!faceDetected || poseWarning !== null}
                     className="btn-primary px-5 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Sparkles className="w-4 h-4" /> Сделать снимок

@@ -43,6 +43,7 @@ export type Metrics = {
   lipChinRatio: number;
   scores: SubScores;
   overall: number;
+  /** Vertical midline, in pixels of the analyzed frame. */
   midX: number;
 };
 
@@ -94,6 +95,48 @@ export function weakestOf(scores: SubScores) {
   return worst;
 }
 
+export type HeadPose = { yaw: number; pitch: number; roll: number };
+
+/** Max deviation from a straight-on shot we still consider usable, in degrees. */
+export const FRONTAL_LIMITS = { yaw: 8, pitch: 10, roll: 8 } as const;
+
+/**
+ * Euler angles from the 4x4 facial transformation matrix MediaPipe returns
+ * (column-major, so element [row][col] sits at data[col * 4 + row]).
+ */
+export function headPose(matrix: number[] | Float32Array): HeadPose {
+  const m = (row: number, col: number) => matrix[col * 4 + row];
+  const sy = Math.hypot(m(0, 0), m(1, 0));
+  const deg = (rad: number) => (rad * 180) / Math.PI;
+  if (sy < 1e-6) {
+    return { pitch: deg(Math.atan2(-m(1, 2), m(1, 1))), yaw: deg(Math.atan2(-m(2, 0), sy)), roll: 0 };
+  }
+  return {
+    pitch: deg(Math.atan2(m(2, 1), m(2, 2))),
+    yaw: deg(Math.atan2(-m(2, 0), sy)),
+    roll: deg(Math.atan2(m(1, 0), m(0, 0))),
+  };
+}
+
+export function isFrontal(pose: HeadPose): boolean {
+  return (
+    Math.abs(pose.yaw) <= FRONTAL_LIMITS.yaw &&
+    Math.abs(pose.pitch) <= FRONTAL_LIMITS.pitch &&
+    Math.abs(pose.roll) <= FRONTAL_LIMITS.roll
+  );
+}
+
+/** Which deviation is worst, phrased as an instruction for the person on camera. */
+export function poseHint(pose: HeadPose): string | null {
+  const over = [
+    { v: Math.abs(pose.yaw) / FRONTAL_LIMITS.yaw, hint: 'Повернись прямо к камере' },
+    { v: Math.abs(pose.pitch) / FRONTAL_LIMITS.pitch, hint: 'Держи подбородок ровно' },
+    { v: Math.abs(pose.roll) / FRONTAL_LIMITS.roll, hint: 'Выпрями наклон головы' },
+  ].filter((o) => o.v > 1);
+  if (!over.length) return null;
+  return over.reduce((a, b) => (b.v > a.v ? b : a)).hint;
+}
+
 const angleAt = (a: Point, b: Point, c: Point): number => {
   const v1x = a.x - b.x, v1y = a.y - b.y;
   const v2x = c.x - b.x, v2y = c.y - b.y;
@@ -103,8 +146,15 @@ const angleAt = (a: Point, b: Point, c: Point): number => {
   return (Math.acos(Math.max(-1, Math.min(1, dot / (m1 * m2)))) * 180) / Math.PI;
 };
 
-export function analyzeFace(lm: Point[]): Metrics {
-  const p = (i: number) => lm[i];
+export function analyzeFace(lm: Point[], frameW: number, frameH: number): Metrics {
+  // MediaPipe normalizes x by frame WIDTH and y by frame HEIGHT, so raw x and y
+  // live on different scales. Everything that mixes the two axes (widths vs
+  // heights, angles, tilts) has to be done in pixels or the result depends on
+  // the camera's aspect ratio.
+  const w = Math.max(1, frameW);
+  const h = Math.max(1, frameH);
+  const px: Point[] = lm.map((q) => ({ x: q.x * w, y: q.y * h }));
+  const p = (i: number) => px[i];
 
   const midX = (p(IDX.glabella).x + p(IDX.noseTip).x + p(IDX.chin).x) / 3;
 
