@@ -146,6 +146,23 @@ const angleAt = (a: Point, b: Point, c: Point): number => {
   return (Math.acos(Math.max(-1, Math.min(1, dot / (m1 * m2)))) * 180) / Math.PI;
 };
 
+/**
+ * Same angle, but through depth as well. The gonion sits far behind the chin,
+ * so the zygion-gonion-chin triangle is nowhere near planar: flattening it into
+ * the image inflates the angle by tens of degrees no matter how straight on the
+ * shot is. That error is structural, not a pose artifact, so the frontal gate
+ * does not help here.
+ */
+const angleAt3D = (a: Point, b: Point, c: Point): number => {
+  const v1x = a.x - b.x, v1y = a.y - b.y, v1z = (a.z ?? 0) - (b.z ?? 0);
+  const v2x = c.x - b.x, v2y = c.y - b.y, v2z = (c.z ?? 0) - (b.z ?? 0);
+  const dot = v1x * v2x + v1y * v2y + v1z * v2z;
+  const m1 = Math.hypot(v1x, v1y, v1z);
+  const m2 = Math.hypot(v2x, v2y, v2z);
+  if (m1 < 1e-9 || m2 < 1e-9) return angleAt(a, b, c);
+  return (Math.acos(Math.max(-1, Math.min(1, dot / (m1 * m2)))) * 180) / Math.PI;
+};
+
 export function analyzeFace(lm: Point[], frameW: number, frameH: number): Metrics {
   // MediaPipe normalizes x by frame WIDTH and y by frame HEIGHT, so raw x and y
   // live on different scales. Everything that mixes the two axes (widths vs
@@ -153,7 +170,10 @@ export function analyzeFace(lm: Point[], frameW: number, frameH: number): Metric
   // the camera's aspect ratio.
   const w = Math.max(1, frameW);
   const h = Math.max(1, frameH);
-  const px: Point[] = lm.map((q) => ({ x: q.x * w, y: q.y * h }));
+  // z carries "roughly the same scale as x" per the MediaPipe docs, so it takes
+  // the width normalizer too.
+  const px: Point[] = lm.map((q) => ({ x: q.x * w, y: q.y * h, z: (q.z ?? 0) * w }));
+  const hasDepth = lm.some((q) => q.z !== undefined && q.z !== 0);
   const p = (i: number) => px[i];
 
   const midX = (p(IDX.glabella).x + p(IDX.noseTip).x + p(IDX.chin).x) / 3;
@@ -179,8 +199,13 @@ export function analyzeFace(lm: Point[], frameW: number, frameH: number): Metric
   const upperFaceH = Math.abs(p(IDX.upperLip).y - p(IDX.glabella).y);
   const fwhr = faceWidth / Math.max(1e-6, upperFaceH);
 
-  const jawAngleR = angleAt(p(IDX.rZyg), p(IDX.rGonion), p(IDX.chin));
-  const jawAngleL = angleAt(p(IDX.lZyg), p(IDX.lGonion), p(IDX.chin));
+  // Everything else here is deliberately kept flat: FWHR, the facial thirds and
+  // canthal tilt are all defined on a frontal photograph, so the projection is
+  // the measurement, not an error in it. The jaw angle is the one that is
+  // genuinely a 3D quantity.
+  const jawAt = hasDepth ? angleAt3D : angleAt;
+  const jawAngleR = jawAt(p(IDX.rZyg), p(IDX.rGonion), p(IDX.chin));
+  const jawAngleL = jawAt(p(IDX.lZyg), p(IDX.lGonion), p(IDX.chin));
   const jawAngle = (jawAngleR + jawAngleL) / 2;
 
   const tiltDeg = (inner: number, outer: number) => {
