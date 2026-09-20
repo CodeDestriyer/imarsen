@@ -54,6 +54,20 @@ export function useTelegramWebApp() {
   }, []);
 }
 
+/**
+ * Сайт открыт как мини-апп внутри Telegram.
+ *
+ * Скрипт telegram-web-app.js подключён в index.html всегда, поэтому сам
+ * `window.Telegram.WebApp` есть и в обычном браузере — там он отдаёт пустой
+ * initData и platform «unknown». Проверяем оба признака: у старых клиентов
+ * initData может не доехать, но платформа приходит.
+ */
+export function isInTelegram(): boolean {
+  const tg = window.Telegram?.WebApp;
+  if (!tg) return false;
+  return Boolean(tg.initData) || (Boolean(tg.platform) && tg.platform !== 'unknown');
+}
+
 export function getTgUser() {
   return window.Telegram?.WebApp?.initDataUnsafe?.user;
 }
