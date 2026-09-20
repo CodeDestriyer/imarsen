@@ -8,6 +8,7 @@ import {
 } from '@mediapipe/tasks-vision';
 import {
   analyzeFace,
+  pupilPair,
   tierFor,
   weakestOf,
   SCORE_LABELS,
@@ -17,6 +18,14 @@ import {
   type Point,
 } from '@/utils/faceAnalyzer';
 import { facePoseFromMatrix, type FacePose } from '@/utils/facePose';
+import {
+  visibleRect,
+  ovalFor,
+  checkFraming,
+  drawGuide,
+  drawCountdownArc,
+  type Framing,
+} from '@/utils/frameGuide';
 import { drawSnapshotOverlay } from '@/utils/drawOverlay';
 import { useProfile } from '@/hooks/useProfile';
 
@@ -29,6 +38,22 @@ type State =
   | 'permission-denied'
   | 'no-camera'
   | 'error';
+
+/** Пропорции окна превью — должны совпадать с классом aspect-[4/3] на контейнере. */
+const CONTAINER_ASPECT = 4 / 3;
+/** Поза дрожит на пару градусов каждый кадр; без задержки кнопка мигала бы. */
+const READY_DEBOUNCE_MS = 400;
+const COUNTDOWN_FROM = 3;
+/** Через столько безуспешных секунд даём снять как есть, чтобы никто не застрял. */
+const ESCAPE_AFTER_MS = 8000;
+
+type ShotQuality = { pose: FacePose | null; framing: Framing | null; forced: boolean };
+
+const FRAMING_HINTS: Record<NonNullable<Framing['reason']>, string> = {
+  far: 'Подойди ближе к камере',
+  near: 'Отодвинься немного',
+  'off-center': 'Помести лицо в овал',
+};
 
 const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm';
 const MODEL_URL =
@@ -52,42 +77,130 @@ export function TryDemo({ open, onClose }: Props) {
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [faceDetected, setFaceDetected] = useState(false);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
-  /** Строка, а не объект: тик идёт каждый кадр, и React гасит setState с тем же примитивом. */
-  const [poseHint, setPoseHint] = useState<string | null>(null);
-  const [shotPose, setShotPose] = useState<FacePose | null>(null);
+  /** Примитивы, а не объекты: тик идёт каждый кадр, и React гасит setState с тем же значением. */
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [showEscape, setShowEscape] = useState(false);
+  const [shotQuality, setShotQuality] = useState<ShotQuality | null>(null);
 
-  const drawLiveLandmarks = useCallback((result: FaceLandmarkerResult) => {
+  const readySinceRef = useRef(0);
+  const notReadySinceRef = useRef(0);
+  const countdownStartRef = useRef(0);
+  /** Автоспуск живёт в тике, а takeSnapshot объявлен ниже — связываем через реф. */
+  const takeSnapshotRef = useRef<(forced: boolean) => void>(() => {});
+  const liveQualityRef = useRef<{ pose: FacePose | null; framing: Framing | null }>({
+    pose: null,
+    framing: null,
+  });
+
+  /**
+   * Рисует превью и решает, можно ли снимать. Возвращает true, когда отсчёт
+   * дошёл до нуля и пора спускать затвор — тик после этого не планирует
+   * новый кадр, иначе съёмка запустилась бы дважды.
+   */
+  const drawLiveLandmarks = useCallback((result: FaceLandmarkerResult): boolean => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    if (!canvas || !video) return;
+    if (!canvas || !video) return false;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return false;
 
     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
     }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Видео показывается с object-cover, то есть обрезано по краям. Прицел
+    // рисуем внутри видимой части, иначе он уедет за границу кадра.
+    const rect = visibleRect(w, h, CONTAINER_ASPECT);
+    const oval = ovalFor(rect);
+    const scale = Math.max(w, h) / 720;
+    const now = performance.now();
 
     const faces = result.faceLandmarks;
     setFaceDetected(faces.length > 0);
+
+    let framing: Framing | null = null;
+    let pose: FacePose | null = null;
+    let message: string | null = null;
+    let frameOk = false;
+
     if (!faces.length) {
-      setPoseHint(null);
-      return;
+      message = 'Лицо не найдено — встань ближе к свету';
+    } else {
+      const lm = faces[0] as Point[];
+      pose = facePoseFromMatrix(result.facialTransformationMatrixes?.[0]?.data);
+
+      // Превью зеркалится, поэтому и зрачки переводим в экранные координаты.
+      const pupils = pupilPair(lm);
+      framing = checkFraming(
+        {
+          r: { x: (1 - pupils.r.x) * w, y: pupils.r.y * h },
+          l: { x: (1 - pupils.l.x) * w, y: pupils.l.y * h },
+        },
+        rect,
+        oval,
+      );
+
+      // Порядок важен: пока человек стоит не на месте, говорить про поворот рано.
+      if (framing.reason) message = FRAMING_HINTS[framing.reason];
+      else if (pose?.hint) message = pose.hint;
+
+      // Наклон подбородка только подсказываем, съёмку по нему не запрещаем.
+      frameOk = framing.ok && !pose?.blocking;
     }
 
-    // Мягкая подсказка по позе: не блокируем съёмку, просто помогаем встать ровно.
-    setPoseHint(facePoseFromMatrix(result.facialTransformationMatrixes?.[0]?.data)?.hint ?? null);
+    liveQualityRef.current = { pose, framing };
+    setStatusMsg(message);
 
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.fillStyle = 'rgba(168, 85, 247, 0.85)';
-    for (const p of faces[0]) {
-      ctx.beginPath();
-      ctx.arc((1 - p.x) * w, p.y * h, 1.1, 0, Math.PI * 2);
-      ctx.fill();
+    // Готовность должна устояться, иначе кнопка будет мигать на дрожании позы.
+    if (frameOk) {
+      if (!readySinceRef.current) readySinceRef.current = now;
+      notReadySinceRef.current = 0;
+    } else {
+      readySinceRef.current = 0;
+      if (!notReadySinceRef.current) notReadySinceRef.current = now;
+      if (now - notReadySinceRef.current > ESCAPE_AFTER_MS) setShowEscape(true);
     }
+    const stableReady = readySinceRef.current > 0 && now - readySinceRef.current >= READY_DEBOUNCE_MS;
+    setReady(stableReady);
+
+    let fire = false;
+    let tick: number | null = null;
+    let progress = 0;
+    if (stableReady) {
+      if (!countdownStartRef.current) countdownStartRef.current = now;
+      const elapsed = now - countdownStartRef.current;
+      progress = elapsed / (COUNTDOWN_FROM * 1000);
+      const left = COUNTDOWN_FROM - Math.floor(elapsed / 1000);
+      if (left <= 0) {
+        countdownStartRef.current = 0;
+        fire = true;
+      } else {
+        tick = left;
+      }
+    } else {
+      countdownStartRef.current = 0;
+    }
+    setCountdown(tick);
+
+    if (faces.length) {
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.85)';
+      for (const p of faces[0]) {
+        ctx.beginPath();
+        ctx.arc((1 - p.x) * w, p.y * h, 1.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    drawGuide(ctx, oval, stableReady, scale);
+    if (tick !== null) drawCountdownArc(ctx, oval, progress, scale);
+
+    return fire;
   }, []);
 
   const tick = useCallback(() => {
@@ -101,7 +214,12 @@ export function TryDemo({ open, onClose }: Props) {
       lastVideoTimeRef.current = video.currentTime;
       try {
         const result = lm.detectForVideo(video, performance.now());
-        drawLiveLandmarks(result);
+        // Затвор спускаем здесь: после него новый кадр не планируем, иначе
+        // съёмка запустится второй раз поверх уже идущей.
+        if (drawLiveLandmarks(result)) {
+          takeSnapshotRef.current(false);
+          return;
+        }
       } catch {
         // swallow per-frame errors
       }
@@ -190,8 +308,11 @@ export function TryDemo({ open, onClose }: Props) {
     }
   }, []);
 
-  const takeSnapshot = useCallback(async () => {
+  const takeSnapshot = useCallback(async (forced = false) => {
     cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
+    countdownStartRef.current = 0;
+    setCountdown(null);
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
@@ -225,7 +346,23 @@ export function TryDemo({ open, onClose }: Props) {
       // смешанные x-y замеры (FWHR, угол челюсти, кантальный наклон) врут.
       const m = analyzeFace(lm, w / h);
       setMetrics(m);
-      setShotPose(facePoseFromMatrix(result.facialTransformationMatrixes?.[0]?.data));
+
+      // Качество снимка считаем по самому снимку, а не по последнему кадру
+      // превью: между ними человек мог шевельнуться.
+      const rect = visibleRect(w, h, CONTAINER_ASPECT);
+      const pupils = pupilPair(lm);
+      setShotQuality({
+        pose: facePoseFromMatrix(result.facialTransformationMatrixes?.[0]?.data),
+        framing: checkFraming(
+          {
+            r: { x: pupils.r.x * w, y: pupils.r.y * h },
+            l: { x: pupils.l.x * w, y: pupils.l.y * h },
+          },
+          rect,
+          ovalFor(rect),
+        ),
+        forced,
+      });
 
       // Сохраняем результат в профиль (только внутри Telegram; уходят одни цифры).
       const tier = tierFor(m.overall);
@@ -249,9 +386,22 @@ export function TryDemo({ open, onClose }: Props) {
     }
   }, [ensureImageLandmarker, recordRating]);
 
+  // Автоспуск дёргает съёмку из тика, где takeSnapshot ещё не объявлен.
+  useEffect(() => {
+    takeSnapshotRef.current = (forced: boolean) => void takeSnapshot(forced);
+  }, [takeSnapshot]);
+
   const retake = useCallback(() => {
     setMetrics(null);
-    setShotPose(null);
+    setShotQuality(null);
+    readySinceRef.current = 0;
+    notReadySinceRef.current = 0;
+    countdownStartRef.current = 0;
+    liveQualityRef.current = { pose: null, framing: null };
+    setStatusMsg(null);
+    setReady(false);
+    setCountdown(null);
+
     if (!streamRef.current) {
       start();
       return;
@@ -267,8 +417,15 @@ export function TryDemo({ open, onClose }: Props) {
     setState('idle');
     setFaceDetected(false);
     setMetrics(null);
-    setPoseHint(null);
-    setShotPose(null);
+    setShotQuality(null);
+    setShowEscape(false);
+    readySinceRef.current = 0;
+    notReadySinceRef.current = 0;
+    countdownStartRef.current = 0;
+    liveQualityRef.current = { pose: null, framing: null };
+    setStatusMsg(null);
+    setReady(false);
+    setCountdown(null);
     onClose();
   }, [stop, onClose]);
 
@@ -288,8 +445,15 @@ export function TryDemo({ open, onClose }: Props) {
       setState('idle');
       setFaceDetected(false);
       setMetrics(null);
-      setPoseHint(null);
-      setShotPose(null);
+      setShotQuality(null);
+      setShowEscape(false);
+    readySinceRef.current = 0;
+    notReadySinceRef.current = 0;
+    countdownStartRef.current = 0;
+    liveQualityRef.current = { pose: null, framing: null };
+    setStatusMsg(null);
+    setReady(false);
+    setCountdown(null);
     }
   }, [open, stop]);
 
@@ -331,18 +495,18 @@ export function TryDemo({ open, onClose }: Props) {
               />
               <canvas
                 ref={canvasRef}
-                className={`absolute inset-0 w-full h-full ${state === 'running' || state === 'snapshot' ? 'opacity-100' : 'opacity-0'}`}
+                className={`absolute inset-0 w-full h-full object-cover ${state === 'running' || state === 'snapshot' ? 'opacity-100' : 'opacity-0'}`}
               />
 
-              {state === 'running' && !faceDetected && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-500/90 text-black text-xs font-medium px-3 py-1.5 rounded-full">
-                  Лицо не найдено — встань ближе к свету
+              {state === 'running' && statusMsg && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/90 text-black text-xs font-medium px-3 py-1.5 rounded-full text-center max-w-[80%]">
+                  {statusMsg}
                 </div>
               )}
 
-              {state === 'running' && faceDetected && poseHint && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/90 text-black text-xs font-medium px-3 py-1.5 rounded-full text-center max-w-[80%]">
-                  {poseHint}
+              {state === 'running' && !statusMsg && ready && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-emerald-400/90 text-black text-xs font-medium px-3 py-1.5 rounded-full">
+                  {countdown !== null ? `Снимаю… ${countdown}` : 'Готово — не двигайся'}
                 </div>
               )}
 
@@ -394,7 +558,7 @@ export function TryDemo({ open, onClose }: Props) {
               {state === 'error' && <ErrorBlock title="Что-то пошло не так" desc={errorMsg || 'Попробуй ещё раз.'} />}
             </div>
 
-            {state === 'snapshot' && metrics && <ResultPanel m={metrics} pose={shotPose} />}
+            {state === 'snapshot' && metrics && <ResultPanel m={metrics} quality={shotQuality} />}
 
             <div className="px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3">
               <div className="text-xs text-gray-500 mono hidden sm:block">
@@ -404,13 +568,22 @@ export function TryDemo({ open, onClose }: Props) {
                 {state === 'loading' && '◌ loading'}
               </div>
               <div className="flex items-center gap-3 ml-auto">
+                {state === 'running' && showEscape && !ready && (
+                  <button
+                    onClick={() => takeSnapshot(true)}
+                    className="btn-ghost px-3 py-2.5 rounded-lg text-xs text-gray-400"
+                  >
+                    Снять как есть
+                  </button>
+                )}
                 {state === 'running' && (
                   <button
-                    onClick={takeSnapshot}
-                    disabled={!faceDetected}
+                    onClick={() => takeSnapshot(false)}
+                    disabled={!ready}
                     className="btn-primary px-5 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <Sparkles className="w-4 h-4" /> Сделать снимок
+                    <Sparkles className="w-4 h-4" />
+                    {countdown !== null ? `Снимаю… ${countdown}` : 'Сделать снимок'}
                   </button>
                 )}
                 {(state === 'snapshot' || state === 'error') && (
@@ -450,12 +623,24 @@ function Metric({ label, value, note }: { label: string; value: string; note?: s
   );
 }
 
-function ResultPanel({ m, pose }: { m: Metrics; pose: FacePose | null }) {
+/** Собирает человеческое объяснение, почему снимку стоит верить чуть меньше. */
+function qualityNote(q: ShotQuality | null): string | null {
+  if (!q) return null;
+  const parts: string[] = [];
+  if (q.pose?.reason) parts.push(q.pose.reason);
+  if (q.framing?.reason === 'far') parts.push('лицо было мелковато в кадре');
+  if (q.framing?.reason === 'near') parts.push('камера была слишком близко');
+  if (!parts.length) return null;
+  return parts.join(', ');
+}
+
+function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }) {
   const tier = tierFor(m.overall);
   const weak = weakestOf(m.scores);
   const pct = (v: number) => Math.round(v * 100) + '%';
   const tiltLabel =
     m.canthalTilt > 2 ? 'позитивный' : m.canthalTilt < -2 ? 'негативный' : 'нейтральный';
+  const note = qualityNote(quality);
 
   return (
     <div className="px-5 py-5 border-t border-white/10 space-y-3">
@@ -494,12 +679,12 @@ function ResultPanel({ m, pose }: { m: Metrics; pose: FacePose | null }) {
         </div>
       </div>
 
-      {pose && !pose.ok && (
+      {note && (
         <div className="glass rounded-xl border border-amber-400/25 p-4">
-          <div className="telemetry mb-1">Поза</div>
+          <div className="telemetry mb-1">Точность снимка</div>
           <div className="text-gray-400 text-xs leading-relaxed">
-            Похоже, {pose.reason} — из-за этого ширинные пропорции могли уехать.
-            Переснимись анфас, и цифры будут точнее.
+            Похоже, {note} — из-за этого пропорции могли уехать. Переснимись анфас,
+            вписав лицо в овал, и цифры будут точнее.
           </div>
         </div>
       )}

@@ -22,6 +22,14 @@ export type FacePose = {
   roll: number;
   /** Поза достаточно фронтальная, чтобы метрикам можно было верить. */
   ok: boolean;
+  /**
+   * Съёмку надо запретить. Только поворот и завал: они рушат все ширинные
+   * отношения разом. По наклону вперёд-назад блокировать нельзя — поправка
+   * PITCH_BIAS оценена по 14 портретам и верна лишь на пару градусов, а
+   * вебкамера ноутбука почти всегда стоит ниже глаз и даёт настоящий наклон.
+   * Ошибиться там дороже, чем недосчитать: там мы только подсказываем.
+   */
+  blocking: boolean;
   /** Ось, которая увела сильнее всех, либо null если всё в порядке. */
   worst: PoseAxis | null;
   /** Мягкая подсказка пользователю на съёмке, либо null. */
@@ -77,22 +85,26 @@ export function facePoseFromMatrix(data?: ArrayLike<number> | null): FacePose | 
 
   if (!Number.isFinite(yaw) || !Number.isFinite(pitch) || !Number.isFinite(roll)) return null;
 
-  const over: Array<[PoseAxis, number]> = [
+  const excess: Array<[PoseAxis, number]> = [
     ['yaw', Math.abs(yaw) / POSE_LIMITS.yaw],
-    ['pitch', Math.abs(pitch) / POSE_LIMITS.pitch],
     ['roll', Math.abs(roll) / POSE_LIMITS.roll],
+    ['pitch', Math.abs(pitch) / POSE_LIMITS.pitch],
   ];
-  over.sort((a, b) => b[1] - a[1]);
-  const [axis, excess] = over[0];
-  const ok = excess <= 1;
+  // Блокирующие оси разбираем первыми, иначе подсказка может заговорить про
+  // подбородок, пока человек стоит боком.
+  const blockers = excess.filter(([a, e]) => a !== 'pitch' && e > 1).sort((a, b) => b[1] - a[1]);
+  const over = blockers.length ? blockers : excess.filter(([, e]) => e > 1).sort((a, b) => b[1] - a[1]);
+  const axis = over[0]?.[0] ?? null;
+  const ok = over.length === 0;
 
   return {
     yaw,
     pitch,
     roll,
     ok,
-    worst: ok ? null : axis,
-    hint: ok ? null : hintFor(axis, pitch),
-    reason: ok ? null : reasonFor(axis, pitch),
+    blocking: blockers.length > 0,
+    worst: axis,
+    hint: axis ? hintFor(axis, pitch) : null,
+    reason: axis ? reasonFor(axis, pitch) : null,
   };
 }

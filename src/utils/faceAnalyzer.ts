@@ -142,6 +142,24 @@ const EXTRA_IDEALS: Record<keyof ExtraScores, { ideal: number; tol: number }> = 
   pfl: { ideal: 0.21, tol: 0.07 },       // замер дал медиану 0.214
 };
 
+/**
+ * Центры зрачков. В 478-точечной модели берём радужки напрямую; запасной
+ * вариант через середины углов глаза нужен только на случай усечённой модели
+ * и даёт ESR примерно на 0.02 меньше — это внутри допуска.
+ *
+ * @param scaleX Множитель по x, если координаты надо привести к пропорциям кадра.
+ */
+export function pupilPair(lm: Point[], scaleX = 1) {
+  const p = (i: number) => ({ x: lm[i].x * scaleX, y: lm[i].y });
+  const mid = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const irisBased = lm.length > Math.max(IDX.rIris, IDX.lIris);
+  return {
+    r: irisBased ? p(IDX.rIris) : mid(p(IDX.rOuter), p(IDX.rInner)),
+    l: irisBased ? p(IDX.lIris) : mid(p(IDX.lOuter), p(IDX.lInner)),
+    irisBased,
+  };
+}
+
 export function weakestOf(scores: SubScores) {
   let worst: { k: keyof SubScores; v: number } | null = null;
   for (const k of Object.keys(scores) as Array<keyof SubScores>) {
@@ -244,9 +262,7 @@ export function analyzeFace(lm: Point[], aspect = 1): Metrics {
   // --- Дополнительные замеры ---
   // Всё ниже — евклидовы расстояния, поэтому они не зависят от завала головы
   // набок, в отличие от третей и кантального наклона.
-  const irisBased = lm.length > Math.max(IDX.rIris, IDX.lIris);
-  const pupilR = irisBased ? p(IDX.rIris) : mid(p(IDX.rOuter), p(IDX.rInner));
-  const pupilL = irisBased ? p(IDX.lIris) : mid(p(IDX.lOuter), p(IDX.lInner));
+  const { r: pupilR, l: pupilL, irisBased } = pupilPair(lm, ar);
   const ipd = dist(pupilR, pupilL);
   const bizygomatic = dist(p(IDX.rZyg), p(IDX.lZyg));
 
