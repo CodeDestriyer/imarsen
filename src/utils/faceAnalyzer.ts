@@ -16,6 +16,11 @@ export const IDX = {
   lowerLipInner: 14,
   lowerLipOuter: 17,
   mouthR: 61, mouthL: 291,
+  // Центры радужек — есть только в 478-точечной модели (face_landmarker.task).
+  rIris: 468, lIris: 473,
+  // Крылья носа. Пара 98/327 выбрана замером: её ширина даёт 24.3% от бизигоматика,
+  // что совпадает с антропометрией (al-al ≈ 25%); 48/278 и 129/358 шире, 115/344 уже.
+  rAla: 98, lAla: 327,
 } as const;
 
 export type Thirds = { upper: number; middle: number; lower: number };
@@ -31,6 +36,36 @@ export type SubScores = {
   lipChin: number;
 };
 
+/**
+ * Дополнительные замеры. Держим их отдельно от SubScores намеренно: они не
+ * входят в overall и не участвуют в выборе слабой точки. Досыпать пять новых
+ * метрик в средневзвешенное — значит размазать распределение к середине, и
+ * все получат один и тот же тир.
+ */
+export type ExtraScores = {
+  esr: number;
+  midface: number;
+  mouthNose: number;
+  bigonial: number;
+  pfl: number;
+};
+
+export type ExtraMetrics = {
+  /** Межзрачковое / бизигоматик. */
+  esr: number;
+  /** Межзрачковое / (линия зрачков -> верхняя губа). */
+  midfaceRatio: number;
+  /** Ширина рта / ширина крыльев носа. */
+  mouthNoseRatio: number;
+  /** Бигониальная ширина / бизигоматик. */
+  bigonialRatio: number;
+  /** Длина глазной щели / бизигоматик. В миллиметрах её не посчитать — нет калибровки масштаба. */
+  pflRatio: number;
+  /** Зрачки взяты из радужек, а не приближены серединой углов глаза. */
+  irisBased: boolean;
+  scores: ExtraScores;
+};
+
 export type Metrics = {
   symmetry: number;
   fwhr: number;
@@ -42,6 +77,7 @@ export type Metrics = {
   philtrumRatio: number;
   lipChinRatio: number;
   scores: SubScores;
+  extra: ExtraMetrics;
   overall: number;
   midX: number;
 };
@@ -85,6 +121,27 @@ export const SCORE_TIPS: Record<keyof SubScores, string> = {
   lipChin: 'Стомион-подбородок не в идеальной пропорции к подносовой части. Подбородок: импланты, или жевательные нагрузки.',
 };
 
+export const EXTRA_LABELS: Record<keyof ExtraScores, string> = {
+  esr: 'Разлёт глаз',
+  midface: 'Мидфейс',
+  mouthNose: 'Рот / нос',
+  bigonial: 'Челюсть / скулы',
+  pfl: 'Длина глаза',
+};
+
+/**
+ * Нормы измерены на 14 реальных портретах, а не взяты с форумов: цифры оттуда
+ * для трёх из пяти метрик мимо, потому что MediaPipe ставит контур по мягким
+ * тканям. В комментариях — что говорит фольклор и что получилось на деле.
+ */
+const EXTRA_IDEALS: Record<keyof ExtraScores, { ideal: number; tol: number }> = {
+  esr: { ideal: 0.47, tol: 0.06 },       // фольклор 0.45; замер дал 0.450-0.502, медиана 0.472
+  midface: { ideal: 1.0, tol: 0.18 },    // фольклор 1.0; замер дал медиану 1.025 — совпало
+  mouthNose: { ideal: 1.5, tol: 0.3 },   // фольклор 1.5; замер дал 1.494. Допуск широкий: метрика самая шумная
+  bigonial: { ideal: 0.8, tol: 0.12 },   // фольклор 0.75; замер дал 0.80 — гонионы идут по коже, не по кости
+  pfl: { ideal: 0.21, tol: 0.07 },       // замер дал медиану 0.214
+};
+
 export function weakestOf(scores: SubScores) {
   let worst: { k: keyof SubScores; v: number } | null = null;
   for (const k of Object.keys(scores) as Array<keyof SubScores>) {
@@ -103,10 +160,23 @@ const angleAt = (a: Point, b: Point, c: Point): number => {
   return (Math.acos(Math.max(-1, Math.min(1, dot / (m1 * m2)))) * 180) / Math.PI;
 };
 
-export function analyzeFace(lm: Point[]): Metrics {
-  const p = (i: number) => lm[i];
+/**
+ * @param lm  Лендмарки MediaPipe, нормированные в 0..1 по ширине и высоте кадра.
+ * @param aspect  Отношение ширины кадра к высоте. Обязательно: x нормирован по W,
+ *   а y по H, поэтому без домножения x на W/H любые смешанные x-y замеры врут
+ *   ровно во столько раз, во сколько кадр не квадратный. На вебкамере 16:9 это
+ *   уводило FWHR с 1.6 на 0.9 — то есть в гарантированный ноль по этой оси.
+ */
+export function analyzeFace(lm: Point[], aspect = 1): Metrics {
+  const ar = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+  // Приводим к пропорциям кадра: y оставляем как есть, x растягиваем.
+  const p = (i: number) => ({ x: lm[i].x * ar, y: lm[i].y });
+  const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+  const mid = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
-  const midX = (p(IDX.glabella).x + p(IDX.noseTip).x + p(IDX.chin).x) / 3;
+  // Для отрисовки нужна нормированная координата, не растянутая.
+  const midX = (lm[IDX.glabella].x + lm[IDX.noseTip].x + lm[IDX.chin].x) / 3;
+  const midXScaled = midX * ar;
 
   const pairs: Array<[number, number]> = [
     [IDX.rOuter, IDX.lOuter],
@@ -117,8 +187,8 @@ export function analyzeFace(lm: Point[]): Metrics {
   ];
   const faceWidth = Math.abs(p(IDX.lZyg).x - p(IDX.rZyg).x);
   const offsets = pairs.map(([a, b]) => {
-    const da = midX - p(a).x;
-    const db = p(b).x - midX;
+    const da = midXScaled - p(a).x;
+    const db = p(b).x - midXScaled;
     const dyDelta = Math.abs(p(a).y - p(b).y);
     const dxDelta = Math.abs(da - db);
     return (dxDelta + dyDelta) / faceWidth;
@@ -171,6 +241,43 @@ export function analyzeFace(lm: Point[]): Metrics {
   const lipChinRatio = stomionToChin / Math.max(1e-6, subToStomion);
   const lipChinScore = Math.max(0, 1 - Math.abs(lipChinRatio - 2.0) / 1.0);
 
+  // --- Дополнительные замеры ---
+  // Всё ниже — евклидовы расстояния, поэтому они не зависят от завала головы
+  // набок, в отличие от третей и кантального наклона.
+  const irisBased = lm.length > Math.max(IDX.rIris, IDX.lIris);
+  const pupilR = irisBased ? p(IDX.rIris) : mid(p(IDX.rOuter), p(IDX.rInner));
+  const pupilL = irisBased ? p(IDX.lIris) : mid(p(IDX.lOuter), p(IDX.lInner));
+  const ipd = dist(pupilR, pupilL);
+  const bizygomatic = dist(p(IDX.rZyg), p(IDX.lZyg));
+
+  const esr = ipd / Math.max(1e-6, bizygomatic);
+  const midfaceRatio = ipd / Math.max(1e-6, dist(mid(pupilR, pupilL), p(IDX.upperLipOuter)));
+  const mouthNoseRatio =
+    dist(p(IDX.mouthR), p(IDX.mouthL)) / Math.max(1e-6, dist(p(IDX.rAla), p(IDX.lAla)));
+  const bigonialRatio = dist(p(IDX.rGonion), p(IDX.lGonion)) / Math.max(1e-6, bizygomatic);
+  const pflAvg = (dist(p(IDX.rOuter), p(IDX.rInner)) + dist(p(IDX.lOuter), p(IDX.lInner))) / 2;
+  const pflRatio = pflAvg / Math.max(1e-6, bizygomatic);
+
+  const rate = (k: keyof ExtraScores, v: number) => {
+    const { ideal, tol } = EXTRA_IDEALS[k];
+    return Math.max(0, Math.min(1, 1 - Math.abs(v - ideal) / tol));
+  };
+  const extra: ExtraMetrics = {
+    esr,
+    midfaceRatio,
+    mouthNoseRatio,
+    bigonialRatio,
+    pflRatio,
+    irisBased,
+    scores: {
+      esr: rate('esr', esr),
+      midface: rate('midface', midfaceRatio),
+      mouthNose: rate('mouthNose', mouthNoseRatio),
+      bigonial: rate('bigonial', bigonialRatio),
+      pfl: rate('pfl', pflRatio),
+    },
+  };
+
   const fwhrScore = Math.max(0, 1 - Math.abs(fwhr - 1.9) / 0.6);
   const jawScore = Math.max(0, 1 - Math.abs(jawAngle - 125) / 30);
   const tiltScore = Math.max(0, 1 - Math.abs(canthalTilt - 4) / 8);
@@ -206,6 +313,7 @@ export function analyzeFace(lm: Point[]): Metrics {
       philtrum: philtrumScore,
       lipChin: lipChinScore,
     },
+    extra,
     overall: Math.max(0, Math.min(1, overall)),
     midX,
   };

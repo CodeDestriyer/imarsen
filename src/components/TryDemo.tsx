@@ -12,9 +12,11 @@ import {
   weakestOf,
   SCORE_LABELS,
   SCORE_TIPS,
+  EXTRA_LABELS,
   type Metrics,
   type Point,
 } from '@/utils/faceAnalyzer';
+import { facePoseFromMatrix, type FacePose } from '@/utils/facePose';
 import { drawSnapshotOverlay } from '@/utils/drawOverlay';
 import { useProfile } from '@/hooks/useProfile';
 
@@ -50,6 +52,9 @@ export function TryDemo({ open, onClose }: Props) {
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [faceDetected, setFaceDetected] = useState(false);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  /** Строка, а не объект: тик идёт каждый кадр, и React гасит setState с тем же примитивом. */
+  const [poseHint, setPoseHint] = useState<string | null>(null);
+  const [shotPose, setShotPose] = useState<FacePose | null>(null);
 
   const drawLiveLandmarks = useCallback((result: FaceLandmarkerResult) => {
     const canvas = canvasRef.current;
@@ -67,7 +72,13 @@ export function TryDemo({ open, onClose }: Props) {
 
     const faces = result.faceLandmarks;
     setFaceDetected(faces.length > 0);
-    if (!faces.length) return;
+    if (!faces.length) {
+      setPoseHint(null);
+      return;
+    }
+
+    // Мягкая подсказка по позе: не блокируем съёмку, просто помогаем встать ровно.
+    setPoseHint(facePoseFromMatrix(result.facialTransformationMatrixes?.[0]?.data)?.hint ?? null);
 
     const w = canvas.width;
     const h = canvas.height;
@@ -112,6 +123,7 @@ export function TryDemo({ open, onClose }: Props) {
       baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
       runningMode: 'IMAGE',
       numFaces: 1,
+      outputFacialTransformationMatrixes: true,
     });
     return imageLandmarkerRef.current;
   }, [ensureFileset]);
@@ -129,7 +141,7 @@ export function TryDemo({ open, onClose }: Props) {
           runningMode: 'VIDEO',
           numFaces: 1,
           outputFaceBlendshapes: false,
-          outputFacialTransformationMatrixes: false,
+          outputFacialTransformationMatrixes: true,
         });
       }
     } catch (e) {
@@ -209,8 +221,11 @@ export function TryDemo({ open, onClose }: Props) {
         return;
       }
       const lm = result.faceLandmarks[0] as Point[];
-      const m = analyzeFace(lm);
+      // Кадр не квадратный: x нормирован по ширине, y по высоте. Без w/h любые
+      // смешанные x-y замеры (FWHR, угол челюсти, кантальный наклон) врут.
+      const m = analyzeFace(lm, w / h);
       setMetrics(m);
+      setShotPose(facePoseFromMatrix(result.facialTransformationMatrixes?.[0]?.data));
 
       // Сохраняем результат в профиль (только внутри Telegram; уходят одни цифры).
       const tier = tierFor(m.overall);
@@ -236,6 +251,7 @@ export function TryDemo({ open, onClose }: Props) {
 
   const retake = useCallback(() => {
     setMetrics(null);
+    setShotPose(null);
     if (!streamRef.current) {
       start();
       return;
@@ -251,6 +267,8 @@ export function TryDemo({ open, onClose }: Props) {
     setState('idle');
     setFaceDetected(false);
     setMetrics(null);
+    setPoseHint(null);
+    setShotPose(null);
     onClose();
   }, [stop, onClose]);
 
@@ -270,6 +288,8 @@ export function TryDemo({ open, onClose }: Props) {
       setState('idle');
       setFaceDetected(false);
       setMetrics(null);
+      setPoseHint(null);
+      setShotPose(null);
     }
   }, [open, stop]);
 
@@ -320,9 +340,15 @@ export function TryDemo({ open, onClose }: Props) {
                 </div>
               )}
 
+              {state === 'running' && faceDetected && poseHint && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/90 text-black text-xs font-medium px-3 py-1.5 rounded-full text-center max-w-[80%]">
+                  {poseHint}
+                </div>
+              )}
+
               {state === 'running' && (
                 <div className="absolute top-3 right-3 telemetry bg-black/50 px-2 py-1 rounded">
-                  LIVE · 468 pts
+                  LIVE · 478 pts
                 </div>
               )}
 
@@ -368,7 +394,7 @@ export function TryDemo({ open, onClose }: Props) {
               {state === 'error' && <ErrorBlock title="Что-то пошло не так" desc={errorMsg || 'Попробуй ещё раз.'} />}
             </div>
 
-            {state === 'snapshot' && metrics && <ResultPanel m={metrics} />}
+            {state === 'snapshot' && metrics && <ResultPanel m={metrics} pose={shotPose} />}
 
             <div className="px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3">
               <div className="text-xs text-gray-500 mono hidden sm:block">
@@ -414,16 +440,17 @@ export function TryDemo({ open, onClose }: Props) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="glass rounded-lg border border-white/10 p-2.5">
       <div className="telemetry mb-1 text-[10px]">{label}</div>
       <div className="text-white font-medium mono text-sm leading-tight">{value}</div>
+      {note && <div className="text-gray-500 mono text-[10px] mt-0.5 leading-tight">{note}</div>}
     </div>
   );
 }
 
-function ResultPanel({ m }: { m: Metrics }) {
+function ResultPanel({ m, pose }: { m: Metrics; pose: FacePose | null }) {
   const tier = tierFor(m.overall);
   const weak = weakestOf(m.scores);
   const pct = (v: number) => Math.round(v * 100) + '%';
@@ -452,6 +479,30 @@ function ResultPanel({ m }: { m: Metrics }) {
       </div>
 
       <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>
+
+      <div>
+        <div className="telemetry mb-2">Дополнительные замеры</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <Metric label={EXTRA_LABELS.esr} value={m.extra.esr.toFixed(3)} note="норма 0.47" />
+          <Metric label={EXTRA_LABELS.midface} value={m.extra.midfaceRatio.toFixed(2)} note="норма 1.00" />
+          <Metric label={EXTRA_LABELS.mouthNose} value={m.extra.mouthNoseRatio.toFixed(2)} note="норма 1.50" />
+          <Metric label={EXTRA_LABELS.bigonial} value={m.extra.bigonialRatio.toFixed(2)} note="норма 0.80" />
+          <Metric label={EXTRA_LABELS.pfl} value={m.extra.pflRatio.toFixed(3)} note="норма 0.21" />
+        </div>
+        <div className="text-[11px] text-gray-500 mono mt-2">
+          Справочные пропорции — в общий балл не входят.
+        </div>
+      </div>
+
+      {pose && !pose.ok && (
+        <div className="glass rounded-xl border border-amber-400/25 p-4">
+          <div className="telemetry mb-1">Поза</div>
+          <div className="text-gray-400 text-xs leading-relaxed">
+            Похоже, {pose.reason} — из-за этого ширинные пропорции могли уехать.
+            Переснимись анфас, и цифры будут точнее.
+          </div>
+        </div>
+      )}
 
       {weak && (
         <div className="glass rounded-xl border border-amber-400/25 p-4">

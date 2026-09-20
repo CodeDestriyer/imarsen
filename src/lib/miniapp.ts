@@ -76,6 +76,11 @@ export const saveRating = (m: Metrics, tierKey: string, tierLabel: string) =>
         lipRatio: m.lipRatio,
         philtrumRatio: m.philtrumRatio,
         lipChinRatio: m.lipChinRatio,
+        esr: m.extra.esr,
+        midfaceRatio: m.extra.midfaceRatio,
+        mouthNoseRatio: m.extra.mouthNoseRatio,
+        bigonialRatio: m.extra.bigonialRatio,
+        pflRatio: m.extra.pflRatio,
       },
     },
   });
