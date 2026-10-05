@@ -1,7 +1,8 @@
 -- Вместо подписки Pro: разовое открытие одного скана за 150⭐ и рефералка.
 --
--- Подписку никто не успел купить (star_payments пуст), поэтому pro_until
--- просто убираем.
+-- Подписку никто не успел купить (star_payments пуст). Колонка
+-- app_users.pro_until осталась и больше не используется: drop column ждал
+-- эксклюзивную блокировку под живым трафиком и упал по таймауту.
 --
 -- rate_results.unlocked_at — скан открыт. Ставит только вебхук бота по
 -- successful_payment, колбэку openInvoice на клиенте не верим.
@@ -9,7 +10,7 @@
 -- referrals — кто кого привёл. Одна строка = одна скидка 50⭐ для
 -- пригласившего; used_at проставляется, когда скидка потрачена.
 
-alter table public.app_users drop column if exists pro_until;
+set local lock_timeout = '5s';
 
 alter table public.rate_results
   add column if not exists unlocked_at timestamptz;
