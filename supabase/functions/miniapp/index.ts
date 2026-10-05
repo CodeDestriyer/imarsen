@@ -290,8 +290,8 @@ async function createUnlockInvoice(userId: number, resultId: number): Promise<st
     body: JSON.stringify({
       title: "Открыть рейт",
       description: discount
-        ? `Тир, симметрия, тилт, челюсть и губы этого скана. Скидка ${discount}⭐ за приглашённого друга.`
-        : "Тир, симметрия, тилт, челюсть и губы этого скана.",
+        ? `Тир, симметрия, наклон глаз, челюсть и губы этого скана. Скидка ${discount}⭐ за приглашённого друга.`
+        : "Тир, симметрия, наклон глаз, челюсть и губы этого скана.",
       payload: `scan:${userId}:${resultId}:${discount}`,
       currency: "XTR",
       prices: [{ label: "Открыть рейт", amount: UNLOCK_PRICE_STARS - discount }],
