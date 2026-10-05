@@ -17,18 +17,20 @@ export type ProfileUser = {
   createdAt: string;
 };
 
-/** Без Pro сервер отдаёт историю без балла и тира — только даты. */
+/** У закрытого скана сервер отдаёт только дату — без балла и тира. */
 export type RatingRow = {
   id: number;
   overall: number | null;
   tier_key: string | null;
   tier_label: string | null;
   created_at: string;
+  unlocked: boolean;
 };
 
 export type Profile = {
   user: ProfileUser;
-  pro: { active: boolean; until: string | null };
+  unlock: { price: number; nextPrice: number };
+  referral: { link: string | null; invited: number; credits: number; discount: number };
   stats: {
     ratings: number;
     best: { overall: number; tier_label: string; created_at: string } | null;
@@ -38,7 +40,7 @@ export type Profile = {
 };
 
 async function call<T = Profile>(
-  action: 'sync' | 'save_result' | 'pro_invoice',
+  action: 'sync' | 'save_result' | 'unlock_invoice',
   extra: Record<string, unknown> = {},
 ): Promise<T> {
   const initData = getTgInitData();
@@ -60,15 +62,16 @@ async function call<T = Profile>(
 
 export const syncProfile = () => call('sync');
 
-/** Ссылка на подписку Pro для Telegram.WebApp.openInvoice. */
-export const createProInvoice = () => call<{ link: string }>('pro_invoice');
+/** Ссылка на оплату открытия скана для Telegram.WebApp.openInvoice. */
+export const createUnlockInvoice = (resultId: number) =>
+  call<{ link: string }>('unlock_invoice', { resultId });
 
 /**
  * Сохраняет результат ИИ-рейтинга. Уходят только числа — снимок остаётся
  * в браузере, как и обещано на лендинге.
  */
 export const saveRating = (m: Metrics, tierKey: string, tierLabel: string) =>
-  call('save_result', {
+  call<Profile & { savedId: number }>('save_result', {
     result: {
       overall: m.overall,
       tierKey,

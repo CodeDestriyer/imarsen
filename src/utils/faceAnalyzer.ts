@@ -97,10 +97,10 @@ export const TIERS: Tier[] = [
 ];
 
 /**
- * Метрики за пейволлом Pro — самые понятные и желанные. Сложные пропорции
+ * Метрики за пейволлом — самые понятные и желанные. Сложные пропорции
  * остаются бесплатными: они и есть витрина, что анализ настоящий.
  */
-export const PRO_SCORES: ReadonlyArray<keyof SubScores> = ['symmetry', 'tilt', 'jaw', 'lips'];
+export const LOCKED_SCORES: ReadonlyArray<keyof SubScores> = ['symmetry', 'tilt', 'jaw', 'lips'];
 
 export function tierFor(v: number): Tier {
   return TIERS.find((t) => v < t.max) ?? TIERS[TIERS.length - 1];

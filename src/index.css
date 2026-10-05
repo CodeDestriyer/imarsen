@@ -220,7 +220,7 @@
   text-transform: uppercase;
 }
 
-/* --- Pro paywall (тёмная модалка результата и светлый профиль) --- */
+/* --- Пейволл рейта (тёмная модалка результата и светлый профиль) --- */
 @property --pro-angle {
   syntax: '<angle>';
   initial-value: 0deg;

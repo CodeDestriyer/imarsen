@@ -28,6 +28,7 @@ type TgWebApp = {
   disableVerticalSwipes?: () => void;
   platform: string;
   version: string;
+  openTelegramLink?: (url: string) => void;
   openInvoice?: (url: string, cb?: (status: InvoiceStatus) => void) => void;
   HapticFeedback?: { notificationOccurred: (type: 'error' | 'success' | 'warning') => void };
 };
