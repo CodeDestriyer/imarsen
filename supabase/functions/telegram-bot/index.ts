@@ -3,7 +3,7 @@
 // Бесплатно, serverless: Telegram при каждом апдейте дёргает эту функцию.
 // Флоу пользователя: /start -> кнопка «Получить талон 🎫» -> прислал фото ->
 //   (тест-режим: талон сразу | платно: счёт 50⭐ -> оплата) -> номер в очереди.
-// Флоу блогера (админа): /queue /next /done /skip /clear /stats
+// Флоу блогера (админа): /queue /next /done /skip /clear /stats /soon
 //
 // Секреты (Supabase -> Edge Functions -> Secrets): BOT_TOKEN, WEBHOOK_SECRET.
 // SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY Supabase подставляет сам.
@@ -267,8 +267,9 @@ async function handleUpdate(update: any) {
     const q = update.pre_checkout_query;
     const payload: string = q.invoice_payload || "";
     // Счёт на скан выписан на конкретного человека — чужой оплатить нельзя.
+    // Всё остальное (талоны) пропускаем как раньше, без проверок.
     const scan = parseScanPayload(payload);
-    const ok = payload === "rate" || (scan !== null && scan.userId === q.from.id);
+    const ok = scan === null || scan.userId === q.from.id;
     await tg("answerPreCheckoutQuery", {
       pre_checkout_query_id: q.id,
       ok,
@@ -362,14 +363,14 @@ async function handleUpdate(update: any) {
     const [head, arg = ""] = text.split(/\s+/);
     const cmd = head.split("@")[0].toLowerCase();
     if (cmd === "/start" && arg) await registerReferral(from, arg);
-    return handleCommand(cmd, chatId, from);
+    return handleCommand(cmd, chatId, from, arg);
   }
 
   // Прочее
   await send(chatId, "Жми «Мгновенный рейт⚡️» и пришли фото 📸", { reply_markup: mainKb });
 }
 
-async function handleCommand(cmd: string, chatId: number, from: any) {
+async function handleCommand(cmd: string, chatId: number, from: any, arg = "") {
   switch (cmd) {
     case "/start": {
       await setMenuButton(chatId);
@@ -470,6 +471,21 @@ async function handleCommand(cmd: string, chatId: number, from: any) {
       const n = data ? data.length : 0;
       await supabase.from("rate_tickets").update({ status: "cancelled", served_at: new Date().toISOString() }).in("status", ACTIVE);
       await send(chatId, `Очередь очищена. Отменено талонов: <b>${n}</b>.`);
+      return;
+    }
+    case "/soon": {
+      // Заглушка «Soon» в мини-аппе. Сайт читает флаг из app_settings при
+      // каждом открытии, так что переключается сразу, без деплоя.
+      const a = arg.toLowerCase();
+      if (a === "on" || a === "off") {
+        const { error } = await supabase.from("app_settings")
+          .upsert({ key: "soon", value: a === "on", updated_at: new Date().toISOString() });
+        if (error) { await send(chatId, "Не получилось сохранить 😕"); return; }
+      }
+      const { data } = await supabase.from("app_settings").select("value").eq("key", "soon").maybeSingle();
+      const on = data?.value === true;
+      await send(chatId,
+        `Заглушка Soon: <b>${on ? "ВКЛ 🔒" : "ВЫКЛ ✅"}</b>\n\n/soon on — включить\n/soon off — выключить`);
       return;
     }
     case "/stats": {
