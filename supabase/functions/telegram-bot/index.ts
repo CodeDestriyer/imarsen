@@ -179,57 +179,86 @@ async function submitDraft(from: any, chatId: number, draft: any) {
   });
 }
 
-// --- Pro-подписка из мини-аппа ---
-// Счёт выписывает функция miniapp с payload "pro:<tg_user_id>". Сюда приходят
-// и первая оплата, и ежемесячные продления (is_recurring) — обе как
-// successful_payment. Пропускать их в ветку талонов нельзя: там человек
-// получил бы «потерялось фото».
-const isProPayload = (payload: string) => payload.startsWith("pro:");
-const DAY_MS = 24 * 60 * 60 * 1000;
+// --- Открытие скана из мини-аппа ---
+// Счёт выписывает функция miniapp с payload "scan:<tg_user_id>:<result_id>:<скидка>".
+// Пропускать такие оплаты в ветку талонов нельзя: там человек получил бы
+// «потерялось фото».
+function parseScanPayload(payload: string) {
+  const m = /^scan:(\d+):(\d+):(\d+)$/.exec(payload);
+  return m ? { userId: Number(m[1]), resultId: Number(m[2]), discount: Number(m[3]) } : null;
+}
 
-async function activatePro(from: any, chatId: number, sp: any) {
-  const expiresAt = sp.subscription_expiration_date
-    ? new Date(sp.subscription_expiration_date * 1000)
-    : new Date(Date.now() + 30 * DAY_MS);
+async function unlockScan(from: any, chatId: number, sp: any) {
+  const scan = parseScanPayload(sp.invoice_payload || "");
+  if (!scan) return;
 
   // Telegram может доставить апдейт повторно: charge_id уникален, второй раз
-  // вставка упадёт с конфликтом, и мы ничего не продлим дважды.
+  // вставка упадёт с конфликтом, и мы ничего не сделаем дважды.
   const { error } = await supabase.from("star_payments").insert({
     charge_id: sp.telegram_payment_charge_id,
     tg_user_id: from.id,
-    product: "pro",
+    product: "scan",
     amount_stars: sp.total_amount,
-    is_recurring: Boolean(sp.is_recurring),
-    subscription_expires_at: expiresAt.toISOString(),
+    result_id: scan.resultId,
+    discount_stars: scan.discount,
   });
   if (error) {
     if (error.code === "23505") return; // уже обработан
     throw error;
   }
 
-  // upsert, а не update: строка в app_users появляется при первом заходе в
-  // мини-апп, но платёж не должен потеряться, если её почему-то нет.
-  const { error: upErr } = await supabase
-    .from("app_users")
-    .upsert({ tg_user_id: from.id, pro_until: expiresAt.toISOString() }, { onConflict: "tg_user_id" });
-  if (upErr) throw upErr;
+  await supabase.from("rate_results")
+    .update({ unlocked_at: new Date().toISOString() })
+    .eq("id", scan.resultId)
+    .eq("tg_user_id", from.id);
 
-  if (sp.is_recurring && !sp.is_first_recurring) return; // продление — молча
-  const until = expiresAt.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
-  await send(chatId,
-    `Pro активен ✅\n\nТир и все метрики открыты, история прогресса — в профиле. ` +
-    `Подписка до <b>${until}</b>, продлится сама. Отменить можно в настройках Telegram → Звёзды.`,
-    { reply_markup: mainKb });
+  // Скидку списываем за самого раннего неиспользованного друга.
+  if (scan.discount > 0) {
+    const { data } = await supabase.from("referrals")
+      .select("invitee_id")
+      .eq("inviter_id", from.id).is("used_at", null)
+      .order("created_at").limit(1);
+    if (data?.length) {
+      await supabase.from("referrals")
+        .update({ used_at: new Date().toISOString() })
+        .eq("invitee_id", data[0].invitee_id);
+    }
+  }
+
+  await send(chatId, "Рейт открыт ✅ Возвращайся в приложение — тир и все метрики уже там.", { reply_markup: mainKb });
 }
 
-// Возврат (refundStarPayment или спор): доступ снимаем сразу.
-async function revokePro(from: any, rp: any) {
+// Возврат (refundStarPayment или спор): скан снова закрываем.
+async function relockScan(rp: any) {
+  const scan = parseScanPayload(rp.invoice_payload || "");
+  if (!scan) return;
   await supabase.from("star_payments")
     .update({ refunded_at: new Date().toISOString() })
     .eq("charge_id", rp.telegram_payment_charge_id);
-  await supabase.from("app_users")
-    .update({ pro_until: new Date().toISOString() })
-    .eq("tg_user_id", from.id);
+  await supabase.from("rate_results").update({ unlocked_at: null }).eq("id", scan.resultId);
+}
+
+// --- Рефералка: /start ref_<id> ---
+// Засчитываем только новичка: кто уже бывал в боте или мини-аппе, тот не
+// «приглашённый». Иначе друзья бы бесконечно перекидывались ссылками.
+async function registerReferral(from: any, arg: string) {
+  const m = /^ref_(\d+)$/.exec(arg);
+  if (!m) return;
+  const inviterId = Number(m[1]);
+  if (inviterId === from.id) return;
+
+  const seen = await Promise.all([
+    supabase.from("app_users").select("tg_user_id").eq("tg_user_id", from.id).limit(1),
+    supabase.from("rate_tickets").select("id").eq("tg_user_id", from.id).limit(1),
+    supabase.from("rate_drafts").select("tg_user_id").eq("tg_user_id", from.id).limit(1),
+    supabase.from("referrals").select("invitee_id").eq("invitee_id", from.id).limit(1),
+  ]);
+  if (seen.some((r) => r.data?.length)) return;
+
+  const { error } = await supabase.from("referrals").insert({ invitee_id: from.id, inviter_id: inviterId });
+  if (error) return; // гонка двух /start — второй просто не засчитается
+  await send(inviterId,
+    `🎁 ${esc(from.first_name || "Друг")} пришёл по твоей ссылке — у тебя скидка <b>50⭐</b> на следующее открытие рейта.`);
 }
 
 async function handleUpdate(update: any) {
@@ -237,8 +266,9 @@ async function handleUpdate(update: any) {
   if (update.pre_checkout_query) {
     const q = update.pre_checkout_query;
     const payload: string = q.invoice_payload || "";
-    // Pro-счёт выписан на конкретного человека — чужой оплатить нельзя.
-    const ok = payload === "rate" || (isProPayload(payload) && payload === `pro:${q.from.id}`);
+    // Счёт на скан выписан на конкретного человека — чужой оплатить нельзя.
+    const scan = parseScanPayload(payload);
+    const ok = payload === "rate" || (scan !== null && scan.userId === q.from.id);
     await tg("answerPreCheckoutQuery", {
       pre_checkout_query_id: q.id,
       ok,
@@ -266,15 +296,15 @@ async function handleUpdate(update: any) {
   const from = msg.from;
 
   if (msg.refunded_payment) {
-    if (isProPayload(msg.refunded_payment.invoice_payload || "")) await revokePro(from, msg.refunded_payment);
+    await relockScan(msg.refunded_payment);
     return;
   }
 
   // Успешная оплата -> создаём талон из черновика (фото + комментарий)
   if (msg.successful_payment) {
     const sp = msg.successful_payment;
-    if (isProPayload(sp.invoice_payload || "")) {
-      await activatePro(from, chatId, sp);
+    if (parseScanPayload(sp.invoice_payload || "")) {
+      await unlockScan(from, chatId, sp);
       return;
     }
     const draft = await getDraft(from.id);
@@ -329,7 +359,9 @@ async function handleUpdate(update: any) {
 
   // --- Команды ---
   if (text.startsWith("/")) {
-    const cmd = text.split(/\s+/)[0].split("@")[0].toLowerCase();
+    const [head, arg = ""] = text.split(/\s+/);
+    const cmd = head.split("@")[0].toLowerCase();
+    if (cmd === "/start" && arg) await registerReferral(from, arg);
     return handleCommand(cmd, chatId, from);
   }
 

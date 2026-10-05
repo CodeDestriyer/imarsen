@@ -14,7 +14,7 @@ import {
   SCORE_LABELS,
   SCORE_TIPS,
   EXTRA_LABELS,
-  PRO_SCORES,
+  LOCKED_SCORES,
   type Metrics,
   type Point,
 } from '@/utils/faceAnalyzer';
@@ -29,7 +29,7 @@ import {
 } from '@/utils/frameGuide';
 import { drawSnapshotOverlay } from '@/utils/drawOverlay';
 import { useProfile } from '@/hooks/useProfile';
-import { ProButton } from '@/components/ProButton';
+import { UnlockButton } from '@/components/UnlockButton';
 
 type State =
   | 'idle'
@@ -653,7 +653,7 @@ const LOCKED_PLACEHOLDER = {
   lips: '1:1.58',
 };
 
-/** Тир и четыре «сладкие» метрики. Без Pro — под блюром с кнопкой оплаты. */
+/** Тир и четыре «сладкие» метрики. Пока скан не открыт — под блюром с кнопкой оплаты. */
 function TierCard({ m, locked }: { m: Metrics; locked: boolean }) {
   const tier = tierFor(m.overall);
   const pct = (v: number) => Math.round(v * 100) + '%';
@@ -666,7 +666,7 @@ function TierCard({ m, locked }: { m: Metrics; locked: boolean }) {
           <div className="telemetry">Итоговый тир</div>
           {locked && (
             <span className="telemetry !text-[9px] px-2 py-0.5 rounded-full border border-white/15 inline-flex items-center gap-1">
-              <Lock className="w-2.5 h-2.5" /> Pro
+              <Lock className="w-2.5 h-2.5" /> Закрыто
             </span>
           )}
         </div>
@@ -698,10 +698,7 @@ function TierCard({ m, locked }: { m: Metrics; locked: boolean }) {
 
         {locked && (
           <div className="mt-4">
-            <ProButton label="Открыть тир" />
-            <div className="mt-2 text-center text-[11px] text-gray-500">
-              + история и прогресс по всем сканам · отмена в любой момент
-            </div>
+            <UnlockButton />
           </div>
         )}
       </div>
@@ -723,7 +720,7 @@ function qualityNote(q: ShotQuality | null): string | null {
 function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }) {
   const { locked } = useProfile();
   const weak = weakestOf(m.scores);
-  const weakLocked = Boolean(locked && weak && PRO_SCORES.includes(weak.k));
+  const weakLocked = Boolean(locked && weak && LOCKED_SCORES.includes(weak.k));
   const pct = (v: number) => Math.round(v * 100) + '%';
   const tiltLabel =
     m.canthalTilt > 2 ? 'позитивный' : m.canthalTilt < -2 ? 'негативный' : 'нейтральный';
@@ -731,10 +728,6 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
 
   return (
     <div className="px-5 py-5 border-t border-white/10 space-y-3">
-      <TierCard m={m} locked={locked} />
-
-      {!locked && <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>}
-
       <div>
         <div className="telemetry mb-2">Пропорции</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -776,7 +769,7 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
           </div>
           {weakLocked ? (
             <div className="text-gray-400 text-xs leading-relaxed">
-              Твоя слабая точка — среди метрик Pro. Открой тир, чтобы увидеть её и план, что с ней делать.
+              Твоя слабая точка — среди закрытых метрик. Открой рейт ниже, чтобы увидеть её и план, что с ней делать.
             </div>
           ) : (
             <>
@@ -786,6 +779,10 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
           )}
         </div>
       )}
+
+      <TierCard m={m} locked={locked} />
+
+      {!locked && <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>}
     </div>
   );
 }

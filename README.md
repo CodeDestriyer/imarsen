@@ -60,29 +60,25 @@ HMAC-подпись ключом бота и заводит/обновляет �
 `initData` не сходится. Иконка профиля появится, но профиль будет с ошибкой.
 Лендинг при этом работает как обычно.
 
-## Pro-подписка (500⭐ / 30 дней)
+## Открытие рейта (150⭐) и рефералка
 
 Внутри Telegram тир и четыре метрики (симметрия, тилт, челюсть, губы) закрыты
-блюром. Остальные пропорции бесплатны. Вне Telegram всё открыто — флаг
-`PAYWALL_TELEGRAM_ONLY` в `src/config.ts`.
+блюром внизу результата. Остальные пропорции бесплатны. Вне Telegram всё
+открыто — флаг `PAYWALL_TELEGRAM_ONLY` в `src/config.ts`.
 
-Флоу: мини-апп → `miniapp` (`pro_invoice`) выписывает `createInvoiceLink` с
-`subscription_period` → `Telegram.WebApp.openInvoice` → вебхук `telegram-bot`
-получает `successful_payment` с payload `pro:<id>`, пишет `star_payments` и
-двигает `app_users.pro_until`. Продления приходят туда же (`is_recurring`),
-возвраты (`refunded_payment`) снимают доступ.
+Оплата разовая, за один скан: мини-апп → `miniapp` (`unlock_invoice`)
+выписывает `createInvoiceLink` с payload `scan:<user>:<result>:<скидка>` →
+`Telegram.WebApp.openInvoice` → вебхук `telegram-bot` получает
+`successful_payment`, пишет `star_payments` и ставит `rate_results.unlocked_at`.
+Возврат (`refunded_payment`) скан снова закрывает.
+
+Рефералка: ссылка `t.me/<бот>?start=ref_<id>` в профиле. Новичок, пришедший
+по ней (ни разу не был в боте и мини-аппе), даёт пригласившему одну скидку
+50⭐ на следующее открытие. Цены — в `supabase/functions/miniapp/index.ts`.
 
 **Защита клиентская.** Метрики считаются в браузере; под блюром в разметке
 лежат заглушки, но через отладчик JS цифры достать можно. На сервере реально
-закрыты только тир и балл в истории профиля.
-
-### Выкатка
-
-- [ ] Применить миграцию `20261005120000_pro_subscription.sql`.
-- [ ] Задеплоить функции `miniapp` и `telegram-bot` (бот — обязательно
-      вместе с миграцией: без таблицы `star_payments` оплата Pro упадёт).
-- [ ] Вебхук бота должен получать `pre_checkout_query` и `message`
-      (если `allowed_updates` задан вручную — проверить).
+закрыты только тир и балл неоткрытых сканов в профиле.
 
 ## Деплой на Vercel
 

@@ -8,11 +8,12 @@
 // Экшены (POST, JSON):
 //   { action: "sync" }                       -> upsert юзера + профиль со статой
 //   { action: "save_result", result: {...} } -> сохранить ИИ-рейтинг + профиль
-//   { action: "pro_invoice" }                -> ссылка на подписку Pro (openInvoice)
+//   { action: "unlock_invoice", resultId }   -> ссылка на открытие скана (openInvoice)
 // Во всех случаях обязателен initData.
 //
-// Pro открывает тир и закрытые метрики. Сами метрики считаются в браузере,
-// поэтому сервер прячет только то, что хранит сам: тир и балл в истории.
+// Открытие скана (150⭐, со скидкой за друга 100⭐) показывает тир и закрытые
+// метрики именно этого результата. Сами метрики считаются в браузере, поэтому
+// сервер прячет только то, что хранит сам: тир и балл закрытых сканов.
 //
 // Секреты (Supabase -> Edge Functions -> Secrets): BOT_TOKEN (тот же, что у бота).
 // SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY Supabase подставляет сам.
@@ -27,15 +28,12 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 // Сколько живёт подпись initData. Telegram не протухает её сам, поэтому окно
 // задаём мы: иначе перехваченная строка работала бы вечно.
 const MAX_AUTH_AGE_SEC = 24 * 60 * 60;
-const HISTORY_LIMIT = 5;
-// Pro видит прогресс, ему отдаём историю длиннее — под график.
-const PRO_HISTORY_LIMIT = 30;
+const HISTORY_LIMIT = 10;
 
-// Должна совпадать с PRO_PRICE_STARS во фронте (src/config.ts) — там цена
-// только для подписи на кнопке, списывается то, что здесь.
-const PRO_PRICE_STARS = 500;
-// Telegram принимает для подписок ровно 30 дней, другие значения отклоняет.
-const PRO_PERIOD_SEC = 30 * 24 * 60 * 60;
+// Цены. Фронт берёт их из профиля, так что менять только здесь.
+const UNLOCK_PRICE_STARS = 150;
+// Скидка за каждого приглашённого друга, тратится на одно открытие.
+const REFERRAL_DISCOUNT_STARS = 50;
 
 const CORS = {
   "access-control-allow-origin": "*",
@@ -112,6 +110,28 @@ async function verifyInitData(initData: string): Promise<TgUser | null> {
   }
 }
 
+// Имя бота для реферальной ссылки. Узнаём один раз на инстанс функции.
+let botUsername: string | null = null;
+async function getBotUsername(): Promise<string | null> {
+  if (botUsername) return botUsername;
+  try {
+    const j = await (await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`)).json();
+    botUsername = j.ok ? j.result.username : null;
+  } catch {
+    botUsername = null;
+  }
+  return botUsername;
+}
+
+async function unusedReferrals(userId: number): Promise<number> {
+  const { count } = await supabase
+    .from("referrals")
+    .select("invitee_id", { count: "exact", head: true })
+    .eq("inviter_id", userId)
+    .is("used_at", null);
+  return count ?? 0;
+}
+
 // --- Профиль ---
 async function upsertUser(u: TgUser) {
   const now = new Date().toISOString();
@@ -139,27 +159,24 @@ async function upsertUser(u: TgUser) {
 async function buildProfile(u: TgUser) {
   const user = await upsertUser(u);
 
-  const proUntil = user.pro_until ? new Date(user.pro_until) : null;
-  const isPro = Boolean(proUntil && proUntil.getTime() > Date.now());
-
   const { data: history } = await supabase
     .from("rate_results")
-    .select("id, overall, tier_key, tier_label, created_at")
+    .select("id, overall, tier_key, tier_label, created_at, unlocked_at")
     .eq("tg_user_id", u.id)
     .order("created_at", { ascending: false })
-    .limit(isPro ? PRO_HISTORY_LIMIT : HISTORY_LIMIT);
+    .limit(HISTORY_LIMIT);
 
   const { count } = await supabase
     .from("rate_results")
     .select("id", { count: "exact", head: true })
     .eq("tg_user_id", u.id);
 
-  // Лучший результат — отдельным запросом, а не из history: в истории только
-  // последние HISTORY_LIMIT, рекорд может быть старше.
+  // Лучший — только среди открытых: закрытый тир не должен утечь через профиль.
   const { data: bestRows } = await supabase
     .from("rate_results")
     .select("overall, tier_label, created_at")
     .eq("tg_user_id", u.id)
+    .not("unlocked_at", "is", null)
     .order("overall", { ascending: false })
     .limit(1);
 
@@ -171,6 +188,13 @@ async function buildProfile(u: TgUser) {
     .in("status", ["waiting", "serving"])
     .limit(1);
 
+  const { count: invited } = await supabase
+    .from("referrals")
+    .select("invitee_id", { count: "exact", head: true })
+    .eq("inviter_id", u.id);
+  const credits = await unusedReferrals(u.id);
+  const bot = await getBotUsername();
+
   return {
     user: {
       tgUserId: Number(user.tg_user_id),
@@ -181,16 +205,27 @@ async function buildProfile(u: TgUser) {
       isPremium: user.is_premium,
       createdAt: user.created_at,
     },
-    pro: { active: isPro, until: isPro ? proUntil!.toISOString() : null },
+    // TODO(после выкатки фронта): убрать. Старый фронт с подпиской читает
+    // profile.pro.active и без этого поля падает, пока Vercel пересобирает сайт.
+    pro: { active: false, until: null },
+    unlock: {
+      price: UNLOCK_PRICE_STARS,
+      // Цена следующего открытия: со скидкой, если есть неиспользованный друг.
+      nextPrice: credits > 0 ? UNLOCK_PRICE_STARS - REFERRAL_DISCOUNT_STARS : UNLOCK_PRICE_STARS,
+    },
+    referral: {
+      link: bot ? `https://t.me/${bot}?start=ref_${u.id}` : null,
+      invited: invited ?? 0,
+      credits,
+      discount: REFERRAL_DISCOUNT_STARS,
+    },
     stats: {
       ratings: count ?? 0,
-      // Тир и балл — платная часть. Без Pro отдаём только даты: иначе профиль
-      // показал бы бесплатно то, что на экране результата под блюром.
-      best: isPro && bestRows?.length ? bestRows[0] : null,
+      best: bestRows?.length ? bestRows[0] : null,
       ticket: tickets?.length ? tickets[0] : null,
     },
-    history: (history ?? []).map((r) =>
-      isPro ? r : { ...r, overall: null, tier_key: null, tier_label: null }
+    history: (history ?? []).map(({ unlocked_at, ...r }) =>
+      unlocked_at ? { ...r, unlocked: true } : { ...r, overall: null, tier_key: null, tier_label: null, unlocked: false }
     ),
   };
 }
@@ -207,7 +242,7 @@ type IncomingResult = {
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-async function saveResult(userId: number, raw: IncomingResult) {
+async function saveResult(userId: number, raw: IncomingResult): Promise<number> {
   const overall = Number(raw?.overall);
   if (!Number.isFinite(overall) || overall < 0 || overall > 1) {
     throw new Error("bad overall");
@@ -216,32 +251,45 @@ async function saveResult(userId: number, raw: IncomingResult) {
   const tierLabel = String(raw?.tierLabel ?? "").slice(0, 64);
   if (!tierKey || !tierLabel) throw new Error("bad tier");
 
-  const { error } = await supabase.from("rate_results").insert({
+  const { data, error } = await supabase.from("rate_results").insert({
     tg_user_id: userId,
     overall,
     tier_key: tierKey,
     tier_label: tierLabel,
     scores: isPlainObject(raw?.scores) ? raw.scores : {},
     metrics: isPlainObject(raw?.metrics) ? raw.metrics : {},
-  });
+  }).select("id").single();
   if (error) throw error;
+  // id нужен клиенту: открытие оплачивается для конкретного скана.
+  return Number(data.id);
 }
 
-// --- Pro: ссылка на подписку ---
-// Оплату подтверждает только вебхук бота (successful_payment), он же двигает
-// pro_until. Здесь лишь выписываем счёт; payload несёт id, чтобы бот мог
-// сверить, что платит тот, кому счёт выписан.
-async function createProInvoice(userId: number): Promise<string> {
+// --- Открытие скана ---
+// Оплату подтверждает только вебхук бота (successful_payment), он же ставит
+// unlocked_at. Здесь лишь выписываем счёт. В payload — чей скан, какой и
+// со скидкой ли: бот по нему сверяет плательщика и списывает скидку.
+async function createUnlockInvoice(userId: number, resultId: number): Promise<string> {
+  const { data: row } = await supabase
+    .from("rate_results")
+    .select("id, unlocked_at")
+    .eq("id", resultId)
+    .eq("tg_user_id", userId)
+    .maybeSingle();
+  if (!row) throw new Error("result not found");
+  if (row.unlocked_at) throw new Error("already unlocked");
+
+  const discount = (await unusedReferrals(userId)) > 0 ? REFERRAL_DISCOUNT_STARS : 0;
   const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      title: "IMARSEN Pro",
-      description: "Тир, симметрия, тилт, челюсть, губы и история прогресса. Подписка на 30 дней, отменить можно в любой момент.",
-      payload: `pro:${userId}`,
+      title: "Открыть рейт",
+      description: discount
+        ? `Тир, симметрия, тилт, челюсть и губы этого скана. Скидка ${discount}⭐ за приглашённого друга.`
+        : "Тир, симметрия, тилт, челюсть и губы этого скана.",
+      payload: `scan:${userId}:${resultId}:${discount}`,
       currency: "XTR",
-      prices: [{ label: "Pro на 30 дней", amount: PRO_PRICE_STARS }],
-      subscription_period: PRO_PERIOD_SEC,
+      prices: [{ label: "Открыть рейт", amount: UNLOCK_PRICE_STARS - discount }],
     }),
   });
   const j = await r.json();
@@ -254,7 +302,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-  let body: { action?: string; initData?: string; result?: IncomingResult };
+  let body: { action?: string; initData?: string; result?: IncomingResult; resultId?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -265,14 +313,16 @@ Deno.serve(async (req: Request) => {
   if (!user) return json({ error: "unauthorized" }, 401);
 
   try {
-    if (body.action === "pro_invoice") {
-      return json({ link: await createProInvoice(user.id) });
+    if (body.action === "unlock_invoice") {
+      const resultId = Number(body.resultId);
+      if (!Number.isSafeInteger(resultId)) return json({ error: "bad_result" }, 400);
+      return json({ link: await createUnlockInvoice(user.id, resultId) });
     }
     if (body.action === "save_result") {
-      await saveResult(user.id, body.result ?? {});
-    } else if (body.action !== "sync") {
-      return json({ error: "unknown_action" }, 400);
+      const savedId = await saveResult(user.id, body.result ?? {});
+      return json({ ...(await buildProfile(user)), savedId });
     }
+    if (body.action !== "sync") return json({ error: "unknown_action" }, 400);
     return json(await buildProfile(user));
   } catch (e) {
     console.error("miniapp error", e);

@@ -1,9 +1,8 @@
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { X, Ticket, Star, Lock, Sparkles } from 'lucide-react';
+import { X, Ticket, Star, Lock, Gift } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
-import { ProButton } from '@/components/ProButton';
 import { TIERS } from '@/utils/faceAnalyzer';
 import type { RatingRow } from '@/lib/miniapp';
 
@@ -16,7 +15,7 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { status, profile, preview, isPro, locked } = useProfile();
+  const { status, profile, preview, shareReferral } = useProfile();
 
   const name =
     [profile?.user.firstName, profile?.user.lastName].filter(Boolean).join(' ') ||
@@ -65,11 +64,6 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                   <div className="font-semibold tracking-tight truncate flex items-center gap-1.5">
                     {name}
                     {profile?.user.isPremium && <Star className="w-3.5 h-3.5 text-accent shrink-0" />}
-                    {isPro && (
-                      <span className="pro-btn !shadow-none rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide">
-                        PRO
-                      </span>
-                    )}
                   </div>
                   <div className="text-muted text-sm truncate mono">
                     {username ? `@${username}` : 'Telegram'}
@@ -103,20 +97,14 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                     <dd className="mono tnum text-2xl mt-1 flex items-center gap-2">
                       {profile.stats.best ? (
                         shortOf(null, profile.stats.best.tier_label)
-                      ) : locked && profile.stats.ratings > 0 ? (
-                        <Lock className="w-5 h-5 text-muted" aria-label="Доступно в Pro" />
+                      ) : profile.stats.ratings > 0 ? (
+                        <Lock className="w-5 h-5 text-muted" aria-label="Рейт не открыт" />
                       ) : (
                         '—'
                       )}
                     </dd>
                   </div>
                 </dl>
-
-                {profile.pro.active && profile.pro.until && (
-                  <div className="px-5 -mt-1 pb-4 text-sm text-muted">
-                    Pro до <span className="text-ink font-semibold">{fmtDate(profile.pro.until)}</span> · продлится сама
-                  </div>
-                )}
 
                 {profile.stats.ticket && (
                   <div className="mx-5 mb-4 flex items-center gap-2.5 rounded border hairline bg-white px-4 py-3 text-sm">
@@ -129,21 +117,30 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                   </div>
                 )}
 
-                {locked && (
+                {profile.referral.link && (
                   <div className="mx-5 mb-4 rounded-lg bg-[#0b0b10] text-white p-5">
                     <div className="flex items-center gap-2 font-semibold">
-                      <Sparkles className="w-4 h-4 text-[#f7a1c4]" /> <span className="pro-text">IMARSEN Pro</span>
+                      <Gift className="w-4 h-4 text-[#f7a1c4]" />
+                      <span className="pro-text">Позови друга — −{profile.referral.discount}⭐</span>
                     </div>
-                    <ul className="mt-3 space-y-1.5 text-sm text-gray-300">
-                      <li>— Итоговый тир каждого скана</li>
-                      <li>— Симметрия, кантальный тилт, челюсть, губы</li>
-                      <li>— История и график прогресса</li>
-                    </ul>
-                    <ProButton label="Оформить Pro" className="mt-4" />
+                    <p className="mt-2 text-sm text-gray-300 leading-relaxed">
+                      Друг заходит в бота по твоей ссылке — тебе скидка {profile.referral.discount}⭐ на открытие
+                      рейта. Один друг — одна скидка.
+                    </p>
+                    <div className="mt-3 flex gap-4 text-xs text-gray-400 mono">
+                      <span>Пришло: <span className="text-white">{profile.referral.invited}</span></span>
+                      <span>Скидок: <span className="text-white">{profile.referral.credits}</span></span>
+                    </div>
+                    <button
+                      onClick={shareReferral}
+                      className="pro-btn mt-4 w-full rounded-xl px-5 py-3 font-semibold text-sm whitespace-nowrap"
+                    >
+                      Отправить ссылку
+                    </button>
                   </div>
                 )}
 
-                {isPro && <ProgressChart rows={profile.history} />}
+                <ProgressChart rows={profile.history} />
 
                 <div className="px-5 pb-5">
                   <div className="eyebrow mb-2">История</div>
@@ -158,7 +155,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                           <div className="min-w-0">
                             {r.overall === null ? (
                               <div className="text-sm font-medium flex items-center gap-1.5 text-muted">
-                                <Lock className="w-3.5 h-3.5" /> Тир скрыт
+                                <Lock className="w-3.5 h-3.5" /> Рейт закрыт
                               </div>
                             ) : (
                               <div className="text-sm font-medium truncate">{r.tier_label}</div>

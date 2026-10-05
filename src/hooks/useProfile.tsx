@@ -9,7 +9,7 @@ import {
   type InvoiceStatus,
 } from '@/hooks/useTelegramWebApp';
 import {
-  createProInvoice,
+  createUnlockInvoice,
   miniappConfigured,
   saveRating,
   syncProfile,
@@ -18,8 +18,9 @@ import {
 import { PAYWALL_TELEGRAM_ONLY } from '@/config';
 
 /** Вебхук бота подтверждает оплату с задержкой — столько раз переспрашиваем. */
-const PRO_POLL_TRIES = 6;
-const PRO_POLL_MS = 1500;
+const UNLOCK_POLL_TRIES = 6;
+const UNLOCK_POLL_MS = 1500;
+const SHARE_TEXT = 'Узнай свой тир по лицу — ИИ-рейт за пару секунд 👀';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Status = 'unavailable' | 'loading' | 'ready' | 'error';
@@ -31,13 +32,15 @@ type ProfileCtx = {
   preview: { name: string; photoUrl?: string } | null;
   refresh: () => void;
   recordRating: (m: Metrics, tierKey: string, tierLabel: string) => void;
-  isPro: boolean;
-  /** Закрытые метрики прячем: пейволл действует здесь и Pro не куплен. */
+  /** Закрытые метрики текущего скана прячем: пейволл действует здесь и скан не открыт. */
   locked: boolean;
-  /** Оплата доступна: мы в Telegram и клиент умеет openInvoice. */
+  /** Оплата доступна: мы в Telegram, клиент умеет openInvoice и скан сохранён. */
   canBuy: boolean;
   buying: boolean;
-  buyPro: () => Promise<InvoiceStatus>;
+  /** Открыть текущий скан за звёзды. */
+  buyUnlock: () => Promise<InvoiceStatus>;
+  /** Поделиться реферальной ссылкой через нативный шаринг Telegram. */
+  shareReferral: () => void;
 };
 
 const Ctx = createContext<ProfileCtx>({
@@ -46,11 +49,11 @@ const Ctx = createContext<ProfileCtx>({
   preview: null,
   refresh: () => {},
   recordRating: () => {},
-  isPro: false,
   locked: false,
   canBuy: false,
   buying: false,
-  buyPro: async () => 'failed',
+  buyUnlock: async () => 'failed',
+  shareReferral: () => {},
 });
 
 // Считаем один раз: признак Telegram в течение сессии не меняется.
@@ -62,6 +65,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [preview, setPreview] = useState<ProfileCtx['preview']>(null);
   const [buying, setBuying] = useState(false);
   const [paywalled] = useState(paywallHere);
+  /** id текущего скана в базе: открытие оплачивается именно за него. */
+  const [currentId, setCurrentId] = useState<number | null>(null);
   const inFlight = useRef(false);
 
   const refresh = useCallback(() => {
@@ -97,52 +102,66 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const recordRating = useCallback<ProfileCtx['recordRating']>((m, tierKey, tierLabel) => {
+    setCurrentId(null); // новый скан закрыт, пока не сохранится и не оплатится
     if (!miniappConfigured || !getTgInitData()) return;
     saveRating(m, tierKey, tierLabel)
-      .then((p) => {
+      .then(({ savedId, ...p }) => {
         setProfile(p);
         setStatus('ready');
+        setCurrentId(savedId);
       })
       .catch((err) => console.warn('[profile] save failed', err));
   }, []);
 
-  const buyPro = useCallback(async (): Promise<InvoiceStatus> => {
+  const buyUnlock = useCallback(async (): Promise<InvoiceStatus> => {
     const tg = getTgWebApp();
-    if (!tg?.openInvoice || !miniappConfigured || !getTgInitData()) return 'failed';
+    if (!tg?.openInvoice || currentId === null) return 'failed';
     setBuying(true);
     try {
-      const { link } = await createProInvoice();
+      const { link } = await createUnlockInvoice(currentId);
       const result = await new Promise<InvoiceStatus>((resolve) => tg.openInvoice!(link, resolve));
       if (result === 'paid') {
-        // «paid» от клиента — только повод переспросить сервер: доступ
+        // «paid» от клиента — только повод переспросить сервер: скан
         // открывает вебхук бота, и он может прийти на секунду-другую позже.
-        for (let i = 0; i < PRO_POLL_TRIES; i++) {
+        for (let i = 0; i < UNLOCK_POLL_TRIES; i++) {
           const p = await syncProfile().catch(() => null);
           if (p) {
             setProfile(p);
             setStatus('ready');
-            if (p.pro.active) break;
+            if (p.history.some((r) => r.id === currentId && r.unlocked)) break;
           }
-          await sleep(PRO_POLL_MS);
+          await sleep(UNLOCK_POLL_MS);
         }
         tg.HapticFeedback?.notificationOccurred('success');
       }
       return result;
     } catch (err) {
-      console.warn('[pro] purchase failed', err);
+      console.warn('[unlock] purchase failed', err);
       return 'failed';
     } finally {
       setBuying(false);
     }
-  }, []);
+  }, [currentId]);
 
-  const isPro = Boolean(profile?.pro.active);
-  const locked = paywalled && !isPro;
-  const canBuy = isInTelegram() && Boolean(getTgWebApp()?.openInvoice) && miniappConfigured;
+  const shareReferral = useCallback(() => {
+    const link = profile?.referral.link;
+    if (!link) return;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(SHARE_TEXT)}`;
+    const tg = getTgWebApp();
+    if (tg?.openTelegramLink) tg.openTelegramLink(url);
+    else window.open(url, '_blank', 'noopener');
+  }, [profile?.referral.link]);
+
+  const currentUnlocked = Boolean(
+    currentId !== null && profile?.history.some((r) => r.id === currentId && r.unlocked),
+  );
+  const locked = paywalled && !currentUnlocked;
+  const canBuy =
+    isInTelegram() && Boolean(getTgWebApp()?.openInvoice) && miniappConfigured && currentId !== null;
 
   const value = useMemo(
-    () => ({ status, profile, preview, refresh, recordRating, isPro, locked, canBuy, buying, buyPro }),
-    [status, profile, preview, refresh, recordRating, isPro, locked, canBuy, buying, buyPro],
+    () => ({ status, profile, preview, refresh, recordRating, locked, canBuy, buying, buyUnlock, shareReferral }),
+    [status, profile, preview, refresh, recordRating, locked, canBuy, buying, buyUnlock, shareReferral],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
