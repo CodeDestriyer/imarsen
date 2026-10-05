@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Camera, AlertCircle, Loader2, Sparkles, RotateCcw, ArrowRight, Lock } from 'lucide-react';
+import { X, Camera, AlertCircle, Loader2, Sparkles, RotateCcw, Lock } from 'lucide-react';
 import {
   FaceLandmarker,
   FilesetResolver,
@@ -562,10 +562,9 @@ export function TryDemo({ open, onClose }: Props) {
 
             {state === 'snapshot' && metrics && <ResultPanel m={metrics} quality={shotQuality} />}
 
-            <div className="px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3">
+            <div className={`px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3${state === 'snapshot' ? ' hidden' : ''}`}>
               <div className="text-xs text-gray-500 mono hidden sm:block">
                 {state === 'running' && faceDetected && '● tracking'}
-                {state === 'snapshot' && '◼ snapshot'}
                 {state === 'analyzing' && '◌ analyzing'}
                 {state === 'loading' && '◌ loading'}
               </div>
@@ -588,23 +587,12 @@ export function TryDemo({ open, onClose }: Props) {
                     {countdown !== null ? `Снимаю… ${countdown}` : 'Сделать снимок'}
                   </button>
                 )}
-                {(state === 'snapshot' || state === 'error') && (
-                  <>
-                    <button onClick={retake} className="btn-ghost px-4 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2">
-                      <RotateCcw className="w-4 h-4" /> Заново
-                    </button>
-                    {state === 'snapshot' && (
-                      <a
-                        href="https://t.me/+OBtlpNOrmPU1MTFk"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={handleClose}
-                        className="btn-primary px-5 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2"
-                      >
-                        Полный разбор <ArrowRight className="w-4 h-4" />
-                      </a>
-                    )}
-                  </>
+                {/* После снимка кнопок нет — только результат. «Заново» оставлено
+                    на ошибке: без него там тупик. */}
+                {state === 'error' && (
+                  <button onClick={retake} className="btn-ghost px-4 py-2.5 rounded-lg text-sm font-medium inline-flex items-center gap-2">
+                    <RotateCcw className="w-4 h-4" /> Заново
+                  </button>
                 )}
               </div>
             </div>
@@ -728,6 +716,10 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
 
   return (
     <div className="px-5 py-5 border-t border-white/10 space-y-3">
+      <TierCard m={m} locked={locked} />
+
+      {!locked && <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>}
+
       <div>
         <div className="telemetry mb-2">Пропорции</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -769,7 +761,7 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
           </div>
           {weakLocked ? (
             <div className="text-gray-400 text-xs leading-relaxed">
-              Твоя слабая точка — среди закрытых метрик. Открой рейт ниже, чтобы увидеть её и план, что с ней делать.
+              Твоя слабая точка — среди закрытых метрик. Открой рейт выше, чтобы увидеть её и план, что с ней делать.
             </div>
           ) : (
             <>
@@ -779,10 +771,6 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
           )}
         </div>
       )}
-
-      <TierCard m={m} locked={locked} />
-
-      {!locked && <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>}
     </div>
   );
 }
