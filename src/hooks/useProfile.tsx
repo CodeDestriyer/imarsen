@@ -15,7 +15,7 @@ import {
   syncProfile,
   type Profile,
 } from '@/lib/miniapp';
-import { PAYWALL_TELEGRAM_ONLY } from '@/config';
+import { PAYWALL_ENABLED, PAYWALL_TELEGRAM_ONLY } from '@/config';
 
 /** Вебхук бота подтверждает оплату с задержкой — столько раз переспрашиваем. */
 const UNLOCK_POLL_TRIES = 6;
@@ -57,7 +57,7 @@ const Ctx = createContext<ProfileCtx>({
 });
 
 // Считаем один раз: признак Telegram в течение сессии не меняется.
-const paywallHere = () => !PAYWALL_TELEGRAM_ONLY || isInTelegram();
+const paywallHere = () => PAYWALL_ENABLED && (!PAYWALL_TELEGRAM_ONLY || isInTelegram());
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('unavailable');

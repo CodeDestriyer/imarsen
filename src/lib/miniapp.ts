@@ -1,4 +1,4 @@
-import type { Metrics } from '@/utils/faceAnalyzer';
+import { METRIC_KEYS, type Metrics } from '@/utils/faceAnalyzer';
 import { getTgInitData } from '@/hooks/useTelegramWebApp';
 
 const BASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -70,28 +70,27 @@ export const createUnlockInvoice = (resultId: number) =>
  * Сохраняет результат ИИ-рейтинга. Уходят только числа — снимок остаётся
  * в браузере, как и обещано на лендинге.
  */
-export const saveRating = (m: Metrics, tierKey: string, tierLabel: string) =>
-  call<Profile & { savedId: number }>('save_result', {
+export const saveRating = (m: Metrics, tierKey: string, tierLabel: string) => {
+  const metrics: Record<string, number> = {};
+  const severity: Record<string, number> = {};
+  for (const k of METRIC_KEYS) {
+    metrics[k] = m.results[k].value;
+    severity[k] = m.results[k].severity;
+  }
+  const tilt = m.results.tilt.sides;
+  if (tilt) {
+    metrics.tiltLeft = tilt.left;
+    metrics.tiltRight = tilt.right;
+  }
+  return call<Profile & { savedId: number }>('save_result', {
     result: {
       overall: m.overall,
       tierKey,
       tierLabel,
-      scores: m.scores,
-      metrics: {
-        symmetry: m.symmetry,
-        fwhr: m.fwhr,
-        jawAngle: m.jawAngle,
-        canthalTilt: m.canthalTilt,
-        thirds: m.thirds,
-        thirdsBalance: m.thirdsBalance,
-        lipRatio: m.lipRatio,
-        philtrumRatio: m.philtrumRatio,
-        lipChinRatio: m.lipChinRatio,
-        esr: m.extra.esr,
-        midfaceRatio: m.extra.midfaceRatio,
-        mouthNoseRatio: m.extra.mouthNoseRatio,
-        bigonialRatio: m.extra.bigonialRatio,
-        pflRatio: m.extra.pflRatio,
-      },
+      // scale: 2 — шкала степеней и очков. Записи без него посчитаны старой
+      // формулой, и их overall с новыми напрямую не сравнить.
+      scores: { scale: 2, points: m.points, maxPoints: m.maxPoints, counts: m.counts, severity },
+      metrics,
     },
   });
+};

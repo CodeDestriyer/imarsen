@@ -8,15 +8,21 @@ import {
 } from '@mediapipe/tasks-vision';
 import {
   analyzeFace,
+  formatNorm,
+  formatValue,
   pupilPair,
   tierFor,
+  verdictFor,
   weakestOf,
-  SCORE_LABELS,
-  SCORE_TIPS,
-  EXTRA_LABELS,
-  LOCKED_SCORES,
+  LOCKED_METRICS,
+  METRIC_KEYS,
+  METRICS,
+  SEVERITIES,
+  type MetricKey,
+  type MetricResult,
   type Metrics,
   type Point,
+  type Severity,
 } from '@/utils/faceAnalyzer';
 import { facePoseFromMatrix, type FacePose } from '@/utils/facePose';
 import {
@@ -345,7 +351,7 @@ export function TryDemo({ open, onClose }: Props) {
       }
       const lm = result.faceLandmarks[0] as Point[];
       // Кадр не квадратный: x нормирован по ширине, y по высоте. Без w/h любые
-      // смешанные x-y замеры (FWHR, угол челюсти, кантальный наклон) врут.
+      // смешанные x-y замеры (FWHR, угол челюсти, наклон глаз) врут.
       const m = analyzeFace(lm, w / h);
       setMetrics(m);
 
@@ -480,7 +486,7 @@ export function TryDemo({ open, onClose }: Props) {
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <div>
-                <div className="telemetry">PROBNIK / FACE_MESH</div>
+                <div className="telemetry">Пробник · сетка лица</div>
                 <h3 className="text-lg font-semibold text-white mt-0.5">Бесплатный пробный анализ</h3>
               </div>
               <button onClick={handleClose} className="text-gray-400 hover:text-white p-1 -m-1" aria-label="close">
@@ -514,7 +520,7 @@ export function TryDemo({ open, onClose }: Props) {
 
               {state === 'running' && (
                 <div className="absolute top-3 right-3 telemetry bg-black/50 px-2 py-1 rounded">
-                  LIVE · 478 pts
+                  В кадре · 478 точек
                 </div>
               )}
 
@@ -522,13 +528,13 @@ export function TryDemo({ open, onClose }: Props) {
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
                   <Loader2 className="w-8 h-8 text-emerald-300 animate-spin mb-3" />
                   <p className="text-white font-medium">Анализирую снимок…</p>
-                  <p className="telemetry mt-1">IMAGE-mode detect</p>
+                  <p className="telemetry mt-1">Разбор снимка</p>
                 </div>
               )}
 
               {state === 'snapshot' && (
                 <div className="absolute top-3 right-3 telemetry bg-black/60 px-2 py-1 rounded">
-                  FRAME · ANALYZED
+                  Кадр разобран
                 </div>
               )}
 
@@ -564,9 +570,9 @@ export function TryDemo({ open, onClose }: Props) {
 
             <div className={`px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3${state === 'snapshot' ? ' hidden' : ''}`}>
               <div className="text-xs text-gray-500 mono hidden sm:block">
-                {state === 'running' && faceDetected && '● tracking'}
-                {state === 'analyzing' && '◌ analyzing'}
-                {state === 'loading' && '◌ loading'}
+                {state === 'running' && faceDetected && '● слежу за лицом'}
+                {state === 'analyzing' && '◌ анализ'}
+                {state === 'loading' && '◌ загрузка'}
               </div>
               <div className="flex items-center gap-3 ml-auto">
                 {state === 'running' && showEscape && !ready && (
@@ -603,58 +609,68 @@ export function TryDemo({ open, onClose }: Props) {
   );
 }
 
-function Metric({
-  label,
-  value,
-  note,
-  locked = false,
-}: {
-  label: string;
-  value: string;
-  note?: string;
-  locked?: boolean;
-}) {
-  return (
-    <div className="glass rounded-lg border border-white/10 p-2.5">
-      <div className="telemetry mb-1 text-[10px] flex items-center gap-1">
-        {locked && <Lock className="w-2.5 h-2.5" />}
-        {label}
-      </div>
-      <div className={`text-white font-medium mono text-sm leading-tight${locked ? ' locked-value' : ''}`}>
-        {value}
-      </div>
-      {note && <div className="text-gray-500 mono text-[10px] mt-0.5 leading-tight">{note}</div>}
-    </div>
-  );
-}
+/** Цвет вердикта по степени: от зелёного «идеально» до красного «экстремально». */
+const SEVERITY_TONE: Record<Severity, string> = {
+  0: 'text-emerald-400',
+  1: 'text-yellow-300',
+  2: 'text-amber-400',
+  3: 'text-orange-400',
+  4: 'text-red-400',
+  5: 'text-red-500 font-semibold',
+};
 
 /**
  * Заглушки для закрытых значений. Специально постоянные и правдоподобные:
  * в разметку под блюр не попадает ни одной настоящей цифры, так что
- * «Просмотреть код» ничего не даст.
+ * «Просмотреть код» ничего не даст. Нужны, только когда включён пейволл.
  */
-const LOCKED_PLACEHOLDER = {
-  tier: '???',
-  symmetry: '87%',
-  tilt: '+4.6°',
-  jaw: '124°',
-  lips: '1:1.58',
-};
+const LOCKED_PLACEHOLDER = { tier: '???', value: '1.23', verdict: 'Идеально' };
 
-/** Тир и четыре «сладкие» метрики. Пока скан не открыт — под блюром с кнопкой оплаты. */
+function valueText(r: MetricResult): string {
+  if (r.sides) return `${formatValue(r.key, r.sides.left)} · ${formatValue(r.key, r.sides.right)}`;
+  return formatValue(r.key, r.value);
+}
+
+/**
+ * Строка таблицы. Слева название и вердикт — они длинные и переносятся,
+ * справа короткие замер и норма. Так на ширине телефона ничего не режется.
+ */
+function MetricRow({ r, locked }: { r: MetricResult; locked: boolean }) {
+  return (
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 px-3.5 py-2.5 items-baseline">
+      <div className="text-white text-sm font-medium flex items-center gap-1.5 min-w-0">
+        {locked && <Lock className="w-3 h-3 shrink-0 text-gray-400" />}
+        <span>{METRICS[r.key].label}</span>
+      </div>
+      <div className={`text-white mono text-sm text-right tnum whitespace-nowrap${locked ? ' locked-value' : ''}`}>
+        {locked ? LOCKED_PLACEHOLDER.value : valueText(r)}
+      </div>
+      <div className={`text-xs${locked ? ' locked-value text-gray-400' : ` ${SEVERITY_TONE[r.severity]}`}`}>
+        {locked ? LOCKED_PLACEHOLDER.verdict : verdictFor(r)}
+      </div>
+      <div className="text-gray-500 mono text-[11px] text-right whitespace-nowrap">
+        {r.sides ? 'лев · прав, ' : ''}норма {formatNorm(r.key)}
+      </div>
+    </li>
+  );
+}
+
+/** Тир, очки и раскладка по степеням. Под пейволлом — под блюром с кнопкой оплаты. */
 function TierCard({ m, locked }: { m: Metrics; locked: boolean }) {
   const tier = tierFor(m.overall);
-  const pct = (v: number) => Math.round(v * 100) + '%';
-  const show = (real: string, fake: string) => (locked ? fake : real);
 
   return (
     <div className={locked ? 'pro-ring' : 'pro-ring pro-ring-muted'}>
       <div className="rounded-[15px] bg-[#0b0b10] px-4 pt-4 pb-4 sm:px-5">
         <div className="flex items-center justify-between">
           <div className="telemetry">Итоговый тир</div>
-          {locked && (
+          {locked ? (
             <span className="telemetry !text-[9px] px-2 py-0.5 rounded-full border border-white/15 inline-flex items-center gap-1">
               <Lock className="w-2.5 h-2.5" /> Закрыто
+            </span>
+          ) : (
+            <span className="telemetry mono">
+              {m.points} из {m.maxPoints} очков
             </span>
           )}
         </div>
@@ -666,23 +682,27 @@ function TierCard({ m, locked }: { m: Metrics; locked: boolean }) {
             }`}
             aria-hidden={locked || undefined}
           >
-            {show(tier.short, LOCKED_PLACEHOLDER.tier)}
+            {locked ? LOCKED_PLACEHOLDER.tier : tier.short}
           </div>
           <div className="mt-2 text-sm text-gray-300 font-medium">
             {locked ? 'Твой тир уже посчитан' : tier.label}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Metric label={SCORE_LABELS.symmetry} value={show(pct(m.symmetry), LOCKED_PLACEHOLDER.symmetry)} locked={locked} />
-          <Metric
-            label="Кантальный тилт"
-            value={show(`${m.canthalTilt > 0 ? '+' : ''}${m.canthalTilt.toFixed(1)}°`, LOCKED_PLACEHOLDER.tilt)}
-            locked={locked}
-          />
-          <Metric label={SCORE_LABELS.jaw} value={show(`${Math.round(m.jawAngle)}°`, LOCKED_PLACEHOLDER.jaw)} locked={locked} />
-          <Metric label={SCORE_LABELS.lips} value={show(`1:${m.lipRatio.toFixed(2)}`, LOCKED_PLACEHOLDER.lips)} locked={locked} />
-        </div>
+        {!locked && (
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {SEVERITIES.map((s, i) => (
+              <span
+                key={s.label}
+                className={`mono text-[11px] px-2 py-0.5 rounded-full border border-white/10 ${
+                  m.counts[i] ? SEVERITY_TONE[i as Severity] : 'text-gray-600'
+                }`}
+              >
+                {s.label} {m.counts[i]}
+              </span>
+            ))}
+          </div>
+        )}
 
         {locked && (
           <div className="mt-4">
@@ -707,40 +727,24 @@ function qualityNote(q: ShotQuality | null): string | null {
 
 function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }) {
   const { locked } = useProfile();
-  const weak = weakestOf(m.scores);
-  const weakLocked = Boolean(locked && weak && LOCKED_SCORES.includes(weak.k));
-  const pct = (v: number) => Math.round(v * 100) + '%';
-  const tiltLabel =
-    m.canthalTilt > 2 ? 'позитивный' : m.canthalTilt < -2 ? 'негативный' : 'нейтральный';
+  const isLocked = (k: MetricKey) => locked && LOCKED_METRICS.includes(k);
+  const weak = weakestOf(m);
+  const weakLocked = Boolean(weak && isLocked(weak.key));
   const note = qualityNote(quality);
 
   return (
     <div className="px-5 py-5 border-t border-white/10 space-y-3">
       <TierCard m={m} locked={locked} />
 
-      {!locked && <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>}
-
       <div>
-        <div className="telemetry mb-2">Пропорции</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Metric label={SCORE_LABELS.fwhr} value={m.fwhr.toFixed(2)} note="норма 1.90" />
-          <Metric label="Трети" value={`${pct(m.thirds.upper)}/${pct(m.thirds.middle)}/${pct(m.thirds.lower)}`} />
-          <Metric label={SCORE_LABELS.philtrum} value={pct(m.philtrumRatio)} note="норма 22%" />
-          <Metric label={SCORE_LABELS.lipChin} value={`1:${m.lipChinRatio.toFixed(2)}`} note="норма 1:2" />
-        </div>
-      </div>
-
-      <div>
-        <div className="telemetry mb-2">Дополнительные замеры</div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-          <Metric label={EXTRA_LABELS.esr} value={m.extra.esr.toFixed(3)} note="норма 0.47" />
-          <Metric label={EXTRA_LABELS.midface} value={m.extra.midfaceRatio.toFixed(2)} note="норма 1.00" />
-          <Metric label={EXTRA_LABELS.mouthNose} value={m.extra.mouthNoseRatio.toFixed(2)} note="норма 1.50" />
-          <Metric label={EXTRA_LABELS.bigonial} value={m.extra.bigonialRatio.toFixed(2)} note="норма 0.80" />
-          <Metric label={EXTRA_LABELS.pfl} value={m.extra.pflRatio.toFixed(3)} note="норма 0.21" />
-        </div>
-        <div className="text-[11px] text-gray-500 mono mt-2">
-          Справочные пропорции — в общий балл не входят.
+        <div className="telemetry mb-2">Разбор по метрикам</div>
+        <ul className="glass rounded-xl border border-white/10 divide-y divide-white/5 overflow-hidden">
+          {METRIC_KEYS.map((k) => (
+            <MetricRow key={k} r={m.results[k]} locked={isLocked(k)} />
+          ))}
+        </ul>
+        <div className="text-[11px] text-gray-500 mono mt-2 leading-relaxed">
+          Очки: идеально +2, слегка +1, заметно 0, сильно −1, критично −2, экстремально −3.
         </div>
       </div>
 
@@ -754,23 +758,26 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
         </div>
       )}
 
-      {weak && (
-        <div className="glass rounded-xl border border-amber-400/25 p-4">
-          <div className="telemetry mb-1 flex items-center gap-1">
-            {weakLocked && <Lock className="w-2.5 h-2.5" />} Слабая точка
-          </div>
-          {weakLocked ? (
-            <div className="text-gray-400 text-xs leading-relaxed">
-              Твоя слабая точка — среди закрытых метрик. Открой рейт выше, чтобы увидеть её и план, что с ней делать.
-            </div>
-          ) : (
-            <>
-              <div className="text-white font-semibold mb-2">{SCORE_LABELS[weak.k]}</div>
-              <div className="text-gray-400 text-xs leading-relaxed">{SCORE_TIPS[weak.k]}</div>
-            </>
-          )}
+      <div className="glass rounded-xl border border-amber-400/25 p-4">
+        <div className="telemetry mb-1 flex items-center gap-1">
+          {weakLocked && <Lock className="w-2.5 h-2.5" />} Слабая точка
         </div>
-      )}
+        {!weak ? (
+          <div className="text-gray-400 text-xs leading-relaxed">
+            Слабых мест нет — все метрики в норме. Эталон, брат, мог бы и не мерить.
+          </div>
+        ) : weakLocked ? (
+          <div className="text-gray-400 text-xs leading-relaxed">
+            Твоя слабая точка — среди закрытых метрик. Открой рейт выше, чтобы увидеть её и план, что с ней делать.
+          </div>
+        ) : (
+          <>
+            <div className="text-white font-semibold">{METRICS[weak.key].label}</div>
+            <div className={`text-xs mb-2 ${SEVERITY_TONE[weak.severity]}`}>{verdictFor(weak)}</div>
+            <div className="text-gray-400 text-xs leading-relaxed">{METRICS[weak.key].tip}</div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
