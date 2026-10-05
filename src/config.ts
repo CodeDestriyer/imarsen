@@ -7,7 +7,7 @@
  */
 
 /** Заглушка «Soon» вместо приложения. Выключить — поставить false и задеплоить. */
-export const SOON_SCREEN = true;
+export const SOON_SCREEN = false;
 
 /**
  * Показывать заглушку только тем, кто пришёл из Telegram. Обычный лендинг
