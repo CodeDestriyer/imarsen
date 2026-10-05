@@ -179,12 +179,70 @@ async function submitDraft(from: any, chatId: number, draft: any) {
   });
 }
 
+// --- Pro-подписка из мини-аппа ---
+// Счёт выписывает функция miniapp с payload "pro:<tg_user_id>". Сюда приходят
+// и первая оплата, и ежемесячные продления (is_recurring) — обе как
+// successful_payment. Пропускать их в ветку талонов нельзя: там человек
+// получил бы «потерялось фото».
+const isProPayload = (payload: string) => payload.startsWith("pro:");
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function activatePro(from: any, chatId: number, sp: any) {
+  const expiresAt = sp.subscription_expiration_date
+    ? new Date(sp.subscription_expiration_date * 1000)
+    : new Date(Date.now() + 30 * DAY_MS);
+
+  // Telegram может доставить апдейт повторно: charge_id уникален, второй раз
+  // вставка упадёт с конфликтом, и мы ничего не продлим дважды.
+  const { error } = await supabase.from("star_payments").insert({
+    charge_id: sp.telegram_payment_charge_id,
+    tg_user_id: from.id,
+    product: "pro",
+    amount_stars: sp.total_amount,
+    is_recurring: Boolean(sp.is_recurring),
+    subscription_expires_at: expiresAt.toISOString(),
+  });
+  if (error) {
+    if (error.code === "23505") return; // уже обработан
+    throw error;
+  }
+
+  // upsert, а не update: строка в app_users появляется при первом заходе в
+  // мини-апп, но платёж не должен потеряться, если её почему-то нет.
+  const { error: upErr } = await supabase
+    .from("app_users")
+    .upsert({ tg_user_id: from.id, pro_until: expiresAt.toISOString() }, { onConflict: "tg_user_id" });
+  if (upErr) throw upErr;
+
+  if (sp.is_recurring && !sp.is_first_recurring) return; // продление — молча
+  const until = expiresAt.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  await send(chatId,
+    `Pro активен ✅\n\nТир и все метрики открыты, история прогресса — в профиле. ` +
+    `Подписка до <b>${until}</b>, продлится сама. Отменить можно в настройках Telegram → Звёзды.`,
+    { reply_markup: mainKb });
+}
+
+// Возврат (refundStarPayment или спор): доступ снимаем сразу.
+async function revokePro(from: any, rp: any) {
+  await supabase.from("star_payments")
+    .update({ refunded_at: new Date().toISOString() })
+    .eq("charge_id", rp.telegram_payment_charge_id);
+  await supabase.from("app_users")
+    .update({ pro_until: new Date().toISOString() })
+    .eq("tg_user_id", from.id);
+}
+
 async function handleUpdate(update: any) {
   // Подтверждение оплаты (обязательно в течение 10 сек)
   if (update.pre_checkout_query) {
+    const q = update.pre_checkout_query;
+    const payload: string = q.invoice_payload || "";
+    // Pro-счёт выписан на конкретного человека — чужой оплатить нельзя.
+    const ok = payload === "rate" || (isProPayload(payload) && payload === `pro:${q.from.id}`);
     await tg("answerPreCheckoutQuery", {
-      pre_checkout_query_id: update.pre_checkout_query.id,
-      ok: true,
+      pre_checkout_query_id: q.id,
+      ok,
+      ...(ok ? {} : { error_message: "Счёт устарел. Открой оплату заново из приложения." }),
     });
     return;
   }
@@ -207,9 +265,18 @@ async function handleUpdate(update: any) {
   const chatId = msg.chat.id;
   const from = msg.from;
 
+  if (msg.refunded_payment) {
+    if (isProPayload(msg.refunded_payment.invoice_payload || "")) await revokePro(from, msg.refunded_payment);
+    return;
+  }
+
   // Успешная оплата -> создаём талон из черновика (фото + комментарий)
   if (msg.successful_payment) {
     const sp = msg.successful_payment;
+    if (isProPayload(sp.invoice_payload || "")) {
+      await activatePro(from, chatId, sp);
+      return;
+    }
     const draft = await getDraft(from.id);
     if (!draft) {
       await send(chatId, "Оплата прошла ✅, но потерялось фото. Пришли фото ещё раз — талон закреплю без повторной оплаты.");

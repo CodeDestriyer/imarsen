@@ -8,7 +8,11 @@
 // Экшены (POST, JSON):
 //   { action: "sync" }                       -> upsert юзера + профиль со статой
 //   { action: "save_result", result: {...} } -> сохранить ИИ-рейтинг + профиль
-// В обоих случаях обязателен initData.
+//   { action: "pro_invoice" }                -> ссылка на подписку Pro (openInvoice)
+// Во всех случаях обязателен initData.
+//
+// Pro открывает тир и закрытые метрики. Сами метрики считаются в браузере,
+// поэтому сервер прячет только то, что хранит сам: тир и балл в истории.
 //
 // Секреты (Supabase -> Edge Functions -> Secrets): BOT_TOKEN (тот же, что у бота).
 // SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY Supabase подставляет сам.
@@ -24,6 +28,14 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 // задаём мы: иначе перехваченная строка работала бы вечно.
 const MAX_AUTH_AGE_SEC = 24 * 60 * 60;
 const HISTORY_LIMIT = 5;
+// Pro видит прогресс, ему отдаём историю длиннее — под график.
+const PRO_HISTORY_LIMIT = 30;
+
+// Должна совпадать с PRO_PRICE_STARS во фронте (src/config.ts) — там цена
+// только для подписи на кнопке, списывается то, что здесь.
+const PRO_PRICE_STARS = 500;
+// Telegram принимает для подписок ровно 30 дней, другие значения отклоняет.
+const PRO_PERIOD_SEC = 30 * 24 * 60 * 60;
 
 const CORS = {
   "access-control-allow-origin": "*",
@@ -127,12 +139,15 @@ async function upsertUser(u: TgUser) {
 async function buildProfile(u: TgUser) {
   const user = await upsertUser(u);
 
+  const proUntil = user.pro_until ? new Date(user.pro_until) : null;
+  const isPro = Boolean(proUntil && proUntil.getTime() > Date.now());
+
   const { data: history } = await supabase
     .from("rate_results")
     .select("id, overall, tier_key, tier_label, created_at")
     .eq("tg_user_id", u.id)
     .order("created_at", { ascending: false })
-    .limit(HISTORY_LIMIT);
+    .limit(isPro ? PRO_HISTORY_LIMIT : HISTORY_LIMIT);
 
   const { count } = await supabase
     .from("rate_results")
@@ -166,12 +181,17 @@ async function buildProfile(u: TgUser) {
       isPremium: user.is_premium,
       createdAt: user.created_at,
     },
+    pro: { active: isPro, until: isPro ? proUntil!.toISOString() : null },
     stats: {
       ratings: count ?? 0,
-      best: bestRows?.length ? bestRows[0] : null,
+      // Тир и балл — платная часть. Без Pro отдаём только даты: иначе профиль
+      // показал бы бесплатно то, что на экране результата под блюром.
+      best: isPro && bestRows?.length ? bestRows[0] : null,
       ticket: tickets?.length ? tickets[0] : null,
     },
-    history: history ?? [],
+    history: (history ?? []).map((r) =>
+      isPro ? r : { ...r, overall: null, tier_key: null, tier_label: null }
+    ),
   };
 }
 
@@ -207,6 +227,28 @@ async function saveResult(userId: number, raw: IncomingResult) {
   if (error) throw error;
 }
 
+// --- Pro: ссылка на подписку ---
+// Оплату подтверждает только вебхук бота (successful_payment), он же двигает
+// pro_until. Здесь лишь выписываем счёт; payload несёт id, чтобы бот мог
+// сверить, что платит тот, кому счёт выписан.
+async function createProInvoice(userId: number): Promise<string> {
+  const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      title: "IMARSEN Pro",
+      description: "Тир, симметрия, тилт, челюсть, губы и история прогресса. Подписка на 30 дней, отменить можно в любой момент.",
+      payload: `pro:${userId}`,
+      currency: "XTR",
+      prices: [{ label: "Pro на 30 дней", amount: PRO_PRICE_STARS }],
+      subscription_period: PRO_PERIOD_SEC,
+    }),
+  });
+  const j = await r.json();
+  if (!j.ok) throw new Error(`createInvoiceLink: ${JSON.stringify(j)}`);
+  return j.result as string;
+}
+
 // --- HTTP entrypoint ---
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -223,6 +265,9 @@ Deno.serve(async (req: Request) => {
   if (!user) return json({ error: "unauthorized" }, 401);
 
   try {
+    if (body.action === "pro_invoice") {
+      return json({ link: await createProInvoice(user.id) });
+    }
     if (body.action === "save_result") {
       await saveResult(user.id, body.result ?? {});
     } else if (body.action !== "sync") {

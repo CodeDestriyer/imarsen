@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Camera, AlertCircle, Loader2, Sparkles, RotateCcw, ArrowRight } from 'lucide-react';
+import { X, Camera, AlertCircle, Loader2, Sparkles, RotateCcw, ArrowRight, Lock } from 'lucide-react';
 import {
   FaceLandmarker,
   FilesetResolver,
@@ -14,6 +14,7 @@ import {
   SCORE_LABELS,
   SCORE_TIPS,
   EXTRA_LABELS,
+  PRO_SCORES,
   type Metrics,
   type Point,
 } from '@/utils/faceAnalyzer';
@@ -28,6 +29,7 @@ import {
 } from '@/utils/frameGuide';
 import { drawSnapshotOverlay } from '@/utils/drawOverlay';
 import { useProfile } from '@/hooks/useProfile';
+import { ProButton } from '@/components/ProButton';
 
 type State =
   | 'idle'
@@ -613,12 +615,96 @@ export function TryDemo({ open, onClose }: Props) {
   );
 }
 
-function Metric({ label, value, note }: { label: string; value: string; note?: string }) {
+function Metric({
+  label,
+  value,
+  note,
+  locked = false,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  locked?: boolean;
+}) {
   return (
     <div className="glass rounded-lg border border-white/10 p-2.5">
-      <div className="telemetry mb-1 text-[10px]">{label}</div>
-      <div className="text-white font-medium mono text-sm leading-tight">{value}</div>
+      <div className="telemetry mb-1 text-[10px] flex items-center gap-1">
+        {locked && <Lock className="w-2.5 h-2.5" />}
+        {label}
+      </div>
+      <div className={`text-white font-medium mono text-sm leading-tight${locked ? ' locked-value' : ''}`}>
+        {value}
+      </div>
       {note && <div className="text-gray-500 mono text-[10px] mt-0.5 leading-tight">{note}</div>}
+    </div>
+  );
+}
+
+/**
+ * Заглушки для закрытых значений. Специально постоянные и правдоподобные:
+ * в разметку под блюр не попадает ни одной настоящей цифры, так что
+ * «Просмотреть код» ничего не даст.
+ */
+const LOCKED_PLACEHOLDER = {
+  tier: '???',
+  symmetry: '87%',
+  tilt: '+4.6°',
+  jaw: '124°',
+  lips: '1:1.58',
+};
+
+/** Тир и четыре «сладкие» метрики. Без Pro — под блюром с кнопкой оплаты. */
+function TierCard({ m, locked }: { m: Metrics; locked: boolean }) {
+  const tier = tierFor(m.overall);
+  const pct = (v: number) => Math.round(v * 100) + '%';
+  const show = (real: string, fake: string) => (locked ? fake : real);
+
+  return (
+    <div className={locked ? 'pro-ring' : 'pro-ring pro-ring-muted'}>
+      <div className="rounded-[15px] bg-[#0b0b10] px-4 pt-4 pb-4 sm:px-5">
+        <div className="flex items-center justify-between">
+          <div className="telemetry">Итоговый тир</div>
+          {locked && (
+            <span className="telemetry !text-[9px] px-2 py-0.5 rounded-full border border-white/15 inline-flex items-center gap-1">
+              <Lock className="w-2.5 h-2.5" /> Pro
+            </span>
+          )}
+        </div>
+
+        <div className="relative text-center py-3 sm:py-4">
+          <div
+            className={`pro-text pro-glow font-display font-extrabold tracking-tight leading-none text-[88px] sm:text-[112px]${
+              locked ? ' locked-tier' : ''
+            }`}
+            aria-hidden={locked || undefined}
+          >
+            {show(tier.short, LOCKED_PLACEHOLDER.tier)}
+          </div>
+          <div className="mt-2 text-sm text-gray-300 font-medium">
+            {locked ? 'Твой тир уже посчитан' : tier.label}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Metric label={SCORE_LABELS.symmetry} value={show(pct(m.symmetry), LOCKED_PLACEHOLDER.symmetry)} locked={locked} />
+          <Metric
+            label="Кантальный тилт"
+            value={show(`${m.canthalTilt > 0 ? '+' : ''}${m.canthalTilt.toFixed(1)}°`, LOCKED_PLACEHOLDER.tilt)}
+            locked={locked}
+          />
+          <Metric label={SCORE_LABELS.jaw} value={show(`${Math.round(m.jawAngle)}°`, LOCKED_PLACEHOLDER.jaw)} locked={locked} />
+          <Metric label={SCORE_LABELS.lips} value={show(`1:${m.lipRatio.toFixed(2)}`, LOCKED_PLACEHOLDER.lips)} locked={locked} />
+        </div>
+
+        {locked && (
+          <div className="mt-4">
+            <ProButton label="Открыть тир" />
+            <div className="mt-2 text-center text-[11px] text-gray-500">
+              + история и прогресс по всем сканам · отмена в любой момент
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -635,8 +721,9 @@ function qualityNote(q: ShotQuality | null): string | null {
 }
 
 function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }) {
-  const tier = tierFor(m.overall);
+  const { locked } = useProfile();
   const weak = weakestOf(m.scores);
+  const weakLocked = Boolean(locked && weak && PRO_SCORES.includes(weak.k));
   const pct = (v: number) => Math.round(v * 100) + '%';
   const tiltLabel =
     m.canthalTilt > 2 ? 'позитивный' : m.canthalTilt < -2 ? 'негативный' : 'нейтральный';
@@ -644,26 +731,19 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
 
   return (
     <div className="px-5 py-5 border-t border-white/10 space-y-3">
-      <div className="glass-strong rounded-xl border border-amber-400/25 p-4 flex items-baseline justify-between gap-3">
-        <div className="telemetry">Тир</div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-xl sm:text-2xl font-bold text-white">{tier.label}</span>
-          <span className="text-gray-500 text-xs mono">· {pct(m.overall)}</span>
+      <TierCard m={m} locked={locked} />
+
+      {!locked && <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>}
+
+      <div>
+        <div className="telemetry mb-2">Пропорции</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Metric label={SCORE_LABELS.fwhr} value={m.fwhr.toFixed(2)} note="норма 1.90" />
+          <Metric label="Трети" value={`${pct(m.thirds.upper)}/${pct(m.thirds.middle)}/${pct(m.thirds.lower)}`} />
+          <Metric label={SCORE_LABELS.philtrum} value={pct(m.philtrumRatio)} note="норма 22%" />
+          <Metric label={SCORE_LABELS.lipChin} value={`1:${m.lipChinRatio.toFixed(2)}`} note="норма 1:2" />
         </div>
       </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Metric label="Симметрия" value={pct(m.symmetry)} />
-        <Metric label="FWHR" value={m.fwhr.toFixed(2)} />
-        <Metric label="Угол челюсти" value={`${Math.round(m.jawAngle)}°`} />
-        <Metric label="Кантальный тилт" value={`${m.canthalTilt > 0 ? '+' : ''}${m.canthalTilt.toFixed(1)}°`} />
-        <Metric label="Трети" value={`${pct(m.thirds.upper)}/${pct(m.thirds.middle)}/${pct(m.thirds.lower)}`} />
-        <Metric label="Губы" value={`1:${m.lipRatio.toFixed(2)}`} />
-        <Metric label="Фильтрум" value={pct(m.philtrumRatio)} />
-        <Metric label="Подбородок" value={`1:${m.lipChinRatio.toFixed(2)}`} />
-      </div>
-
-      <div className="text-[11px] text-gray-500 mono">Тилт: {tiltLabel}</div>
 
       <div>
         <div className="telemetry mb-2">Дополнительные замеры</div>
@@ -691,9 +771,19 @@ function ResultPanel({ m, quality }: { m: Metrics; quality: ShotQuality | null }
 
       {weak && (
         <div className="glass rounded-xl border border-amber-400/25 p-4">
-          <div className="telemetry mb-1">Слабая точка</div>
-          <div className="text-white font-semibold mb-2">{SCORE_LABELS[weak.k]}</div>
-          <div className="text-gray-400 text-xs leading-relaxed">{SCORE_TIPS[weak.k]}</div>
+          <div className="telemetry mb-1 flex items-center gap-1">
+            {weakLocked && <Lock className="w-2.5 h-2.5" />} Слабая точка
+          </div>
+          {weakLocked ? (
+            <div className="text-gray-400 text-xs leading-relaxed">
+              Твоя слабая точка — среди метрик Pro. Открой тир, чтобы увидеть её и план, что с ней делать.
+            </div>
+          ) : (
+            <>
+              <div className="text-white font-semibold mb-2">{SCORE_LABELS[weak.k]}</div>
+              <div className="text-gray-400 text-xs leading-relaxed">{SCORE_TIPS[weak.k]}</div>
+            </>
+          )}
         </div>
       )}
     </div>
