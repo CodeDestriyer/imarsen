@@ -17,16 +17,18 @@ export type ProfileUser = {
   createdAt: string;
 };
 
+/** Без Pro сервер отдаёт историю без балла и тира — только даты. */
 export type RatingRow = {
   id: number;
-  overall: number;
-  tier_key: string;
-  tier_label: string;
+  overall: number | null;
+  tier_key: string | null;
+  tier_label: string | null;
   created_at: string;
 };
 
 export type Profile = {
   user: ProfileUser;
+  pro: { active: boolean; until: string | null };
   stats: {
     ratings: number;
     best: { overall: number; tier_label: string; created_at: string } | null;
@@ -35,7 +37,10 @@ export type Profile = {
   history: RatingRow[];
 };
 
-async function call(action: 'sync' | 'save_result', extra: Record<string, unknown> = {}): Promise<Profile> {
+async function call<T = Profile>(
+  action: 'sync' | 'save_result' | 'pro_invoice',
+  extra: Record<string, unknown> = {},
+): Promise<T> {
   const initData = getTgInitData();
   if (!miniappConfigured || !initData) throw new Error('miniapp unavailable');
 
@@ -50,10 +55,13 @@ async function call(action: 'sync' | 'save_result', extra: Record<string, unknow
   });
 
   if (!res.ok) throw new Error(`miniapp ${action} failed: ${res.status}`);
-  return res.json() as Promise<Profile>;
+  return res.json() as Promise<T>;
 }
 
 export const syncProfile = () => call('sync');
+
+/** Ссылка на подписку Pro для Telegram.WebApp.openInvoice. */
+export const createProInvoice = () => call<{ link: string }>('pro_invoice');
 
 /**
  * Сохраняет результат ИИ-рейтинга. Уходят только числа — снимок остаётся

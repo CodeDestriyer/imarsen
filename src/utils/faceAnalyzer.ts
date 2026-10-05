@@ -82,18 +82,25 @@ export type Metrics = {
   midX: number;
 };
 
-export type Tier = { max: number; key: TierKey; label: string };
+/** short — то, что показываем крупно; label — расшифровка под ним. */
+export type Tier = { max: number; key: TierKey; short: string; label: string };
 export type TierKey = 'sub3' | 'sub5' | 'ltn' | 'mtn' | 'htn' | 'chad' | 'trueAdam';
 
 export const TIERS: Tier[] = [
-  { max: 0.30, key: 'sub3',     label: 'Sub-3' },
-  { max: 0.45, key: 'sub5',     label: 'Sub-5' },
-  { max: 0.55, key: 'ltn',      label: 'Low-Tier Normie' },
-  { max: 0.65, key: 'mtn',      label: 'Mid-Tier Normie' },
-  { max: 0.75, key: 'htn',      label: 'High-Tier Normie' },
-  { max: 0.88, key: 'chad',     label: 'CHAD' },
-  { max: 1.01, key: 'trueAdam', label: 'True Adam' },
+  { max: 0.30, key: 'sub3',     short: 'SUB3', label: 'Sub-3' },
+  { max: 0.45, key: 'sub5',     short: 'SUB5', label: 'Sub-5' },
+  { max: 0.55, key: 'ltn',      short: 'LTN',  label: 'Low-Tier Normie' },
+  { max: 0.65, key: 'mtn',      short: 'MTN',  label: 'Mid-Tier Normie' },
+  { max: 0.75, key: 'htn',      short: 'HTN',  label: 'High-Tier Normie' },
+  { max: 0.88, key: 'chad',     short: 'CHAD', label: 'Chad' },
+  { max: 1.01, key: 'trueAdam', short: 'ADAM', label: 'True Adam' },
 ];
+
+/**
+ * Метрики за пейволлом Pro — самые понятные и желанные. Сложные пропорции
+ * остаются бесплатными: они и есть витрина, что анализ настоящий.
+ */
+export const PRO_SCORES: ReadonlyArray<keyof SubScores> = ['symmetry', 'tilt', 'jaw', 'lips'];
 
 export function tierFor(v: number): Tier {
   return TIERS.find((t) => v < t.max) ?? TIERS[TIERS.length - 1];

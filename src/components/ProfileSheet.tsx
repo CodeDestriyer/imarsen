@@ -1,15 +1,22 @@
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Ticket, Star } from 'lucide-react';
+import { useState } from 'react';
+import { X, Ticket, Star, Lock, Sparkles } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import { ProButton } from '@/components/ProButton';
+import { TIERS } from '@/utils/faceAnalyzer';
+import type { RatingRow } from '@/lib/miniapp';
 
 const pct = (v: number) => Math.round(v * 100) + '%';
+/** Ищем по ключу, а для старых записей — по названию (раньше был «CHAD» капсом). */
+const shortOf = (key: string | null, label: string | null) =>
+  TIERS.find((t) => t.key === key || t.label.toLowerCase() === label?.toLowerCase())?.short ?? label ?? '—';
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { status, profile, preview } = useProfile();
+  const { status, profile, preview, isPro, locked } = useProfile();
 
   const name =
     [profile?.user.firstName, profile?.user.lastName].filter(Boolean).join(' ') ||
@@ -58,6 +65,11 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                   <div className="font-semibold tracking-tight truncate flex items-center gap-1.5">
                     {name}
                     {profile?.user.isPremium && <Star className="w-3.5 h-3.5 text-accent shrink-0" />}
+                    {isPro && (
+                      <span className="pro-btn !shadow-none rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide">
+                        PRO
+                      </span>
+                    )}
                   </div>
                   <div className="text-muted text-sm truncate mono">
                     {username ? `@${username}` : 'Telegram'}
@@ -87,16 +99,22 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                     <dd className="mono tnum text-2xl mt-1">{profile.stats.ratings}</dd>
                   </div>
                   <div className="bg-white px-4 py-4">
-                    <dt className="eyebrow">Лучший</dt>
-                    <dd className="mono tnum text-2xl mt-1">
-                      {profile.stats.best ? pct(profile.stats.best.overall) : '—'}
+                    <dt className="eyebrow">Лучший тир</dt>
+                    <dd className="mono tnum text-2xl mt-1 flex items-center gap-2">
+                      {profile.stats.best ? (
+                        shortOf(null, profile.stats.best.tier_label)
+                      ) : locked && profile.stats.ratings > 0 ? (
+                        <Lock className="w-5 h-5 text-muted" aria-label="Доступно в Pro" />
+                      ) : (
+                        '—'
+                      )}
                     </dd>
                   </div>
                 </dl>
 
-                {profile.stats.best && (
+                {profile.pro.active && profile.pro.until && (
                   <div className="px-5 -mt-1 pb-4 text-sm text-muted">
-                    Твой тир: <span className="text-ink font-semibold">{profile.stats.best.tier_label}</span>
+                    Pro до <span className="text-ink font-semibold">{fmtDate(profile.pro.until)}</span> · продлится сама
                   </div>
                 )}
 
@@ -111,6 +129,22 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                   </div>
                 )}
 
+                {locked && (
+                  <div className="mx-5 mb-4 rounded-lg bg-[#0b0b10] text-white p-5">
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Sparkles className="w-4 h-4 text-[#f7a1c4]" /> <span className="pro-text">IMARSEN Pro</span>
+                    </div>
+                    <ul className="mt-3 space-y-1.5 text-sm text-gray-300">
+                      <li>— Итоговый тир каждого скана</li>
+                      <li>— Симметрия, кантальный тилт, челюсть, губы</li>
+                      <li>— История и график прогресса</li>
+                    </ul>
+                    <ProButton label="Оформить Pro" className="mt-4" />
+                  </div>
+                )}
+
+                {isPro && <ProgressChart rows={profile.history} />}
+
                 <div className="px-5 pb-5">
                   <div className="eyebrow mb-2">История</div>
                   {profile.history.length === 0 ? (
@@ -122,15 +156,24 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                       {profile.history.map((r) => (
                         <li key={r.id} className="bg-white px-4 py-2.5 flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{r.tier_label}</div>
+                            {r.overall === null ? (
+                              <div className="text-sm font-medium flex items-center gap-1.5 text-muted">
+                                <Lock className="w-3.5 h-3.5" /> Тир скрыт
+                              </div>
+                            ) : (
+                              <div className="text-sm font-medium truncate">{r.tier_label}</div>
+                            )}
                             <div className="text-muted text-xs mono">{fmtDate(r.created_at)}</div>
                           </div>
-                          <span className="mono tnum text-lg shrink-0">{pct(r.overall)}</span>
+                          <span className="mono tnum text-lg shrink-0 font-semibold">
+                            {r.overall === null ? '···' : shortOf(r.tier_key, r.tier_label)}
+                          </span>
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
+
               </>
             )}
           </motion.div>
@@ -138,5 +181,74 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
       )}
     </AnimatePresence>,
     document.body,
+  );
+}
+
+/**
+ * Прогресс по сканам: одна серия, поэтому без легенды — заголовок её называет.
+ * Ось Y — общий балл, полосы фона — границы тиров, чтобы было видно, сколько
+ * осталось до следующего.
+ */
+function ProgressChart({ rows }: { rows: RatingRow[] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const pts = rows
+    .filter((r): r is RatingRow & { overall: number } => r.overall !== null)
+    .slice()
+    .reverse(); // сервер отдаёт новые сверху, график идёт слева направо
+  if (pts.length < 2) return null;
+
+  const W = 320, H = 120, PAD_X = 10, PAD_TOP = 10, PAD_BOTTOM = 10;
+  const vals = pts.map((p) => p.overall);
+  const lo = Math.max(0, Math.min(...vals) - 0.06);
+  const hi = Math.min(1, Math.max(...vals) + 0.06);
+  const x = (i: number) => PAD_X + (i * (W - PAD_X * 2)) / (pts.length - 1);
+  const y = (v: number) => PAD_TOP + (1 - (v - lo) / (hi - lo || 1)) * (H - PAD_TOP - PAD_BOTTOM);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.overall).toFixed(1)}`).join('');
+  const bounds = TIERS.slice(0, -1).filter((t) => t.max > lo && t.max < hi);
+  const first = pts[0].overall;
+  const last = pts[pts.length - 1].overall;
+  const delta = Math.round((last - first) * 100);
+  const h = hover !== null ? pts[hover] : null;
+
+  return (
+    <div className="mx-5 mb-4">
+      <div className="flex items-baseline justify-between mb-2">
+        <div className="eyebrow">Прогресс</div>
+        <div className={`mono tnum text-xs ${delta > 0 ? 'text-emerald-700' : 'text-muted'}`}>
+          {delta > 0 ? '▲ +' : delta < 0 ? '▼ ' : ''}{delta} пт за {pts.length} сканов
+        </div>
+      </div>
+      <div className="relative surface rounded bg-white">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" role="img"
+          aria-label={`Общий балл по сканам: с ${pct(first)} до ${pct(last)}`}
+          onMouseLeave={() => setHover(null)}>
+          {bounds.map((t) => (
+            <g key={t.key}>
+              <line x1={0} x2={W} y1={y(t.max)} y2={y(t.max)} stroke="rgba(0,0,0,0.08)" strokeDasharray="3 4" />
+              <text x={W - 4} y={y(t.max) - 3} textAnchor="end" fontSize="8" fill="#5b5b5b" fontFamily="'JetBrains Mono', ui-monospace, monospace">
+                {TIERS[TIERS.indexOf(t) + 1].short}
+              </text>
+            </g>
+          ))}
+          <path d={line} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          {pts.map((p, i) => (
+            <g key={p.id}>
+              {(i === pts.length - 1 || i === hover) && (
+                <circle cx={x(i)} cy={y(p.overall)} r={4} fill="var(--accent)" stroke="#fff" strokeWidth={2} />
+              )}
+              {/* Цель наведения шире точки — по ней легко попасть пальцем. */}
+              <rect x={x(i) - (W / pts.length) / 2} y={0} width={W / pts.length} height={H} fill="transparent"
+                onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} />
+            </g>
+          ))}
+        </svg>
+        {h && hover !== null && (
+          <div className="absolute top-1 pointer-events-none bg-ink text-paper text-[11px] mono px-2 py-1 rounded whitespace-nowrap"
+            style={{ left: `${(x(hover) / W) * 100}%`, transform: `translateX(${hover > pts.length / 2 ? '-100%' : '0'})` }}>
+            {shortOf(h.tier_key, h.tier_label)} · {pct(h.overall)} · {fmtDate(h.created_at)}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

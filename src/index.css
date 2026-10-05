@@ -219,3 +219,53 @@
   color: rgba(180, 180, 190, 0.75);
   text-transform: uppercase;
 }
+
+/* --- Pro paywall (тёмная модалка результата и светлый профиль) --- */
+@property --pro-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+/* Рамка-градиент: внешний слой с padding 1px, внутри — непрозрачная карточка. */
+.pro-ring {
+  padding: 1px;
+  border-radius: 1rem;
+  background: conic-gradient(from var(--pro-angle), #f5b14c, #f0508c, #8b5cf6, #38bdf8, #f5b14c);
+  animation: pro-spin 7s linear infinite;
+}
+.pro-ring-muted { background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06)); animation: none; }
+@keyframes pro-spin { to { --pro-angle: 360deg; } }
+
+.pro-text {
+  background: linear-gradient(120deg, #ffe3a3 0%, #f7a1c4 45%, #b9a4ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pro-glow { text-shadow: 0 0 48px rgba(240, 80, 140, 0.35); }
+
+/* Заглушка под блюром. Настоящих цифр в разметке нет — только эти. */
+.locked-value { filter: blur(7px); user-select: none; pointer-events: none; }
+.locked-tier { filter: blur(14px); user-select: none; pointer-events: none; }
+
+.pro-btn {
+  position: relative;
+  overflow: hidden;
+  color: #0b0b0f;
+  background: linear-gradient(120deg, #ffd68a, #f7a1c4 50%, #b9a4ff);
+  box-shadow: 0 8px 28px -10px rgba(240, 80, 140, 0.65);
+}
+.pro-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: pro-sheen 2.8s ease-in-out infinite;
+}
+@keyframes pro-sheen { 60%, 100% { transform: translateX(120%); } }
+.pro-btn:disabled { opacity: 0.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pro-ring, .pro-btn::after { animation: none; }
+}

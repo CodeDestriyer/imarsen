@@ -4,8 +4,8 @@ import { Reveal } from '@/components/Reveal';
 const points = [
   {
     icon: ScanFace,
-    title: '4 ключевые метрики',
-    desc: 'Симметрия, наклон, FWHR и линия челюсти — за пару секунд.',
+    title: 'Тир и 13 замеров',
+    desc: 'Итоговый тир от Sub-5 до Chad, симметрия, тилт, челюсть и пропорции — за пару секунд.',
   },
   {
     icon: Zap,

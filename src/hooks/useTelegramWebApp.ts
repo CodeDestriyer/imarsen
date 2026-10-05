@@ -28,7 +28,11 @@ type TgWebApp = {
   disableVerticalSwipes?: () => void;
   platform: string;
   version: string;
+  openInvoice?: (url: string, cb?: (status: InvoiceStatus) => void) => void;
+  HapticFeedback?: { notificationOccurred: (type: 'error' | 'success' | 'warning') => void };
 };
+
+export type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending';
 
 declare global {
   interface Window {
@@ -78,4 +82,8 @@ export function getTgUser() {
  */
 export function getTgInitData(): string {
   return window.Telegram?.WebApp?.initData ?? '';
+}
+
+export function getTgWebApp() {
+  return window.Telegram?.WebApp;
 }
