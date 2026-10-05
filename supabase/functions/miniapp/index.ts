@@ -35,6 +35,10 @@ const UNLOCK_PRICE_STARS = 150;
 // Скидка за каждого приглашённого друга, тратится на одно открытие.
 const REFERRAL_DISCOUNT_STARS = 50;
 
+// Пейволл. Выключен — история и лучший тир отдаются целиком, без пряток
+// неоплаченных сканов. Включать вместе с PAYWALL_ENABLED в src/config.ts.
+const PAYWALL_ENABLED = false;
+
 const CORS = {
   "access-control-allow-origin": "*",
   "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
@@ -172,13 +176,12 @@ async function buildProfile(u: TgUser) {
     .eq("tg_user_id", u.id);
 
   // Лучший — только среди открытых: закрытый тир не должен утечь через профиль.
-  const { data: bestRows } = await supabase
+  let bestQuery = supabase
     .from("rate_results")
     .select("overall, tier_label, created_at")
-    .eq("tg_user_id", u.id)
-    .not("unlocked_at", "is", null)
-    .order("overall", { ascending: false })
-    .limit(1);
+    .eq("tg_user_id", u.id);
+  if (PAYWALL_ENABLED) bestQuery = bestQuery.not("unlocked_at", "is", null);
+  const { data: bestRows } = await bestQuery.order("overall", { ascending: false }).limit(1);
 
   // Место в очереди на живой рейт — если человек уже брал талон у бота.
   const { data: tickets } = await supabase
@@ -225,7 +228,9 @@ async function buildProfile(u: TgUser) {
       ticket: tickets?.length ? tickets[0] : null,
     },
     history: (history ?? []).map(({ unlocked_at, ...r }) =>
-      unlocked_at ? { ...r, unlocked: true } : { ...r, overall: null, tier_key: null, tier_label: null, unlocked: false }
+      unlocked_at || !PAYWALL_ENABLED
+        ? { ...r, unlocked: true }
+        : { ...r, overall: null, tier_key: null, tier_label: null, unlocked: false }
     ),
   };
 }
@@ -285,8 +290,8 @@ async function createUnlockInvoice(userId: number, resultId: number): Promise<st
     body: JSON.stringify({
       title: "Открыть рейт",
       description: discount
-        ? `Тир, симметрия, тилт, челюсть и губы этого скана. Скидка ${discount}⭐ за приглашённого друга.`
-        : "Тир, симметрия, тилт, челюсть и губы этого скана.",
+        ? `Тир, симметрия, наклон глаз, челюсть и губы этого скана. Скидка ${discount}⭐ за приглашённого друга.`
+        : "Тир, симметрия, наклон глаз, челюсть и губы этого скана.",
       payload: `scan:${userId}:${resultId}:${discount}`,
       currency: "XTR",
       prices: [{ label: "Открыть рейт", amount: UNLOCK_PRICE_STARS - discount }],
