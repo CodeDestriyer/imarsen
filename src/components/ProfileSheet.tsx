@@ -5,6 +5,7 @@ import { X, Ticket, Star, Lock, Gift } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { TIERS } from '@/utils/faceAnalyzer';
 import type { RatingRow } from '@/lib/miniapp';
+import { PAYWALL_ENABLED } from '@/config';
 
 const pct = (v: number) => Math.round(v * 100) + '%';
 /** Ищем по ключу, а для старых записей — по названию (раньше был «CHAD» капсом). */
@@ -117,7 +118,8 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
                   </div>
                 )}
 
-                {profile.referral.link && (
+                {/* Скидка от друга имеет смысл, только пока рейт платный. */}
+                {PAYWALL_ENABLED && profile.referral.link && (
                   <div className="mx-5 mb-4 rounded-lg bg-[#0b0b10] text-white p-5">
                     <div className="flex items-center gap-2 font-semibold">
                       <Gift className="w-4 h-4 text-[#f7a1c4]" />
