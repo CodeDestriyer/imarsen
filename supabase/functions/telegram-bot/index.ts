@@ -310,7 +310,11 @@ const IN_CHANNEL = ["member", "restricted", "administrator", "creator"];
 
 // Бота добавили/убрали в канале. Добавил админ бота — запоминаем канал.
 async function onMyChatMember(u: any) {
-  if (u.chat?.type !== "channel" || !isAdmin(u.from?.id)) return;
+  if (u.chat?.type !== "channel") return;
+  if (!isAdmin(u.from?.id)) {
+    console.log("bot added to channel by non-admin", u.from?.id, u.chat.id);
+    return;
+  }
   const st = u.new_chat_member?.status;
   if (st === "administrator") {
     const prev = await getPaidChannel();
@@ -372,15 +376,43 @@ async function onChatMember(u: any) {
   }
 }
 
+// Подключить канал по id/@username. Проверяем, что бот там админ с правом
+// приглашать — без этого ссылку не выпустить.
+async function connectChannel(chatId: number, target: number | string) {
+  const r = await tg("getChat", { chat_id: target });
+  if (!r.ok || r.result.type !== "channel") {
+    await send(chatId, "Канал не найден. Сначала добавь бота в канал админом.");
+    return;
+  }
+  const ch = r.result;
+  const botId = Number(BOT_TOKEN.split(":")[0]);
+  const me = await tg("getChatMember", { chat_id: ch.id, user_id: botId });
+  const st = me?.result?.status;
+  if (st !== "administrator") {
+    await send(chatId, `Бот не админ в «${esc(ch.title || "")}». Добавь его админом с правом «Приглашать пользователей».`);
+    return;
+  }
+  await savePaidChannel({ id: ch.id, title: ch.title || "канал" });
+  const err = await ensureWebhookUpdates();
+  await send(chatId,
+    `✅ Канал «${esc(ch.title || "")}» подключён.` +
+    (me.result.can_invite_users ? "" : "\n⚠️ Дай боту право «Приглашать пользователей», иначе ссылку не выпустить.") +
+    (err ? `\n⚠️ Стата: ${esc(err)}` : "") +
+    `\n\n/paid link — выпустить ссылку на подписку ${CHANNEL_PRICE_STARS}⭐/мес.`);
+}
+
 async function paidStatus(chatId: number) {
   const ch = await getPaidChannel();
   if (!ch) {
+    // Включаем my_chat_member/chat_member заранее: иначе добавление бота в
+    // канал до бота просто не доходит.
+    await ensureWebhookUpdates();
     await send(chatId,
       "<b>Платный канал не подключён.</b>\n\n" +
       "1. Добавь этого бота админом в канал (право «Приглашать пользователей»).\n" +
-      "2. Бот сам напишет, что канал подключён.\n" +
+      "2. <b>Перешли сюда любой пост из канала</b> — бот подключит его сам.\n" +
       "3. /paid link — выпустить ссылку на подписку.\n\n" +
-      "Если бот не отписался — /paid channel @username (или -100… id).");
+      "Для публичного канала можно и так: /paid channel @username");
     return;
   }
   await ensureWebhookUpdates();
@@ -424,17 +456,8 @@ async function paidCommand(chatId: number, arg: string, rest: string) {
   }
   if (a === "channel") {
     const target = rest.trim();
-    if (!target) { await send(chatId, "Формат: /paid channel @username или /paid channel -100…"); return; }
-    const r = await tg("getChat", { chat_id: /^-?\d+$/.test(target) ? Number(target) : target });
-    if (!r.ok || r.result.type !== "channel") {
-      await send(chatId, "Канал не найден. Бот должен быть в нём админом.");
-      return;
-    }
-    await savePaidChannel({ id: r.result.id, title: r.result.title || "канал" });
-    const err = await ensureWebhookUpdates();
-    await send(chatId, `✅ Канал «${esc(r.result.title || "")}» подключён.` +
-      (err ? `\n⚠️ Стата: ${esc(err)}` : "") + `\n\n/paid link — выпустить ссылку.`);
-    return;
+    if (!target) { await send(chatId, "Формат: /paid channel @username, или просто перешли сюда пост из канала."); return; }
+    return connectChannel(chatId, /^-?\d+$/.test(target) ? Number(target) : target);
   }
   return paidStatus(chatId);
 }
@@ -474,8 +497,18 @@ async function handleUpdate(update: any) {
 
   const msg = update.message;
   if (!msg) return;
+  // В группах бот молчит: его могли добавить в чат обсуждений канала, и
+  // отвечать там «Жми Мгновенный рейт» на каждое сообщение нельзя.
+  if (msg.chat.type !== "private") return;
   const chatId = msg.chat.id;
   const from = msg.from;
+
+  // Админ переслал пост из канала — подключаем этот канал как платный.
+  const fwdChat = msg.forward_origin?.type === "channel" ? msg.forward_origin.chat : msg.forward_from_chat;
+  if (fwdChat?.type === "channel" && isAdmin(from.id)) {
+    await connectChannel(chatId, fwdChat.id);
+    return;
+  }
 
   if (msg.refunded_payment) {
     await relockScan(msg.refunded_payment);
