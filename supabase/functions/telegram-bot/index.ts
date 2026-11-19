@@ -3,7 +3,7 @@
 // Бесплатно, serverless: Telegram при каждом апдейте дёргает эту функцию.
 // Флоу пользователя: /start -> кнопка «Получить талон 🎫» -> прислал фото ->
 //   (тест-режим: талон сразу | платно: счёт 50⭐ -> оплата) -> номер в очереди.
-// Флоу блогера (админа): /queue /next /done /skip /clear /stats /soon
+// Флоу блогера (админа): /queue /next /done /skip /clear /stats /soon /paid
 //
 // Секреты (Supabase -> Edge Functions -> Secrets): BOT_TOKEN, WEBHOOK_SECRET.
 // SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY Supabase подставляет сам.
@@ -13,6 +13,15 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const PAID_MODE = true; // false = тест (талон бесплатно), true = оплата звёздами
 const TICKET_PRICE_STARS = 50; // цена талона в звёздах
 const ADMIN_IDS: number[] = [7256107332, 915335079]; // Telegram ID блогера/админов
+
+// Платный канал: нативная подписка Telegram. Деньги, автопродление и кик
+// неплательщиков — на стороне Telegram, бот только выпускает ссылку и ведёт стату.
+const CHANNEL_PRICE_STARS = 300; // в месяц
+const CHANNEL_PERIOD_SEC = 2592000; // 30 дней — единственный период, который принимает Telegram
+const NOTIFY_NEW_SUBSCRIBERS = true; // слать админам «новый подписчик»
+// Апдейты, которые боту нужны. chat_member Telegram по умолчанию НЕ шлёт —
+// без него не будет статистики канала.
+const ALLOWED_UPDATES = ["message", "callback_query", "pre_checkout_query", "my_chat_member", "chat_member"];
 
 const BTN_GET = "Мгновенный рейт⚡️";
 
@@ -261,7 +270,179 @@ async function registerReferral(from: any, arg: string) {
     `🎁 ${esc(from.first_name || "Друг")} пришёл по твоей ссылке — у тебя скидка <b>50⭐</b> на следующее открытие рейта.`);
 }
 
+// --- Платный канал ---
+async function getPaidChannel(): Promise<{ id: number; title: string; link?: string } | null> {
+  const { data } = await supabase.from("app_settings").select("value").eq("key", "paid_channel").maybeSingle();
+  return (data?.value as any) ?? null;
+}
+
+async function savePaidChannel(v: { id: number; title: string; link?: string }) {
+  await supabase.from("app_settings")
+    .upsert({ key: "paid_channel", value: v, updated_at: new Date().toISOString() });
+}
+
+// Включить chat_member в вебхуке. URL и секрет оставляем те же.
+async function ensureWebhookUpdates(): Promise<string | null> {
+  const info = await tg("getWebhookInfo", {});
+  const url = info?.result?.url;
+  if (!url) return "вебхук не найден";
+  const cur: string[] = info.result.allowed_updates ?? [];
+  if (ALLOWED_UPDATES.every((u) => cur.includes(u))) return null;
+  const r = await tg("setWebhook", {
+    url,
+    allowed_updates: ALLOWED_UPDATES,
+    ...(WEBHOOK_SECRET ? { secret_token: WEBHOOK_SECRET } : {}),
+  });
+  return r.ok ? null : (r.description || "setWebhook не прошёл");
+}
+
+async function createSubscriptionLink(chatId: number) {
+  return await tg("createChatSubscriptionInviteLink", {
+    chat_id: chatId,
+    name: `Подписка ${CHANNEL_PRICE_STARS}⭐`,
+    subscription_period: CHANNEL_PERIOD_SEC,
+    subscription_price: CHANNEL_PRICE_STARS,
+  });
+}
+
+const tsOrNull = (unix?: number) => (unix ? new Date(unix * 1000).toISOString() : null);
+const IN_CHANNEL = ["member", "restricted", "administrator", "creator"];
+
+// Бота добавили/убрали в канале. Добавил админ бота — запоминаем канал.
+async function onMyChatMember(u: any) {
+  if (u.chat?.type !== "channel" || !isAdmin(u.from?.id)) return;
+  const st = u.new_chat_member?.status;
+  if (st === "administrator") {
+    const prev = await getPaidChannel();
+    if (prev?.id === u.chat.id) return;
+    await savePaidChannel({ id: u.chat.id, title: u.chat.title || "канал" });
+    const err = await ensureWebhookUpdates();
+    await send(u.from.id,
+      `✅ Канал «${esc(u.chat.title || "")}» подключён.\n\n` +
+      (u.new_chat_member.can_invite_users ? "" : "⚠️ Дай боту право «Приглашать пользователей», иначе ссылку не выпустить.\n\n") +
+      (err ? `⚠️ Не удалось включить стату: ${esc(err)}\n\n` : "") +
+      `Дальше: /paid link — выпустить ссылку на подписку ${CHANNEL_PRICE_STARS}⭐/мес.`);
+  } else if (st === "left" || st === "kicked") {
+    const prev = await getPaidChannel();
+    if (prev?.id === u.chat.id) await send(u.from.id, "⚠️ Бота убрали из платного канала — статистика больше не пишется.");
+  }
+}
+
+// Кто-то вошёл/вышел из платного канала.
+async function onChatMember(u: any) {
+  const ch = await getPaidChannel();
+  if (!ch || u.chat?.id !== ch.id) return;
+  const m = u.new_chat_member;
+  const user = m?.user;
+  if (!user || user.is_bot) return;
+
+  const now = new Date().toISOString();
+  const wasIn = IN_CHANNEL.includes(u.old_chat_member?.status);
+  const isIn = IN_CHANNEL.includes(m.status);
+  const viaSub = !!u.invite_link?.subscription_price;
+
+  const { data: prev } = await supabase.from("channel_subscribers")
+    .select("*").eq("tg_user_id", user.id).maybeSingle();
+
+  const row: Record<string, unknown> = {
+    tg_user_id: user.id,
+    chat_id: ch.id,
+    username: user.username ?? null,
+    first_name: user.first_name ?? null,
+    status: m.status,
+    until_date: tsOrNull(m.until_date) ?? prev?.until_date ?? null,
+    updated_at: now,
+  };
+  const joined = isIn && !wasIn;
+  if (joined) {
+    row.last_joined_at = now;
+    row.first_joined_at = prev?.first_joined_at ?? now;
+    row.joins = (prev?.joins ?? 0) + 1;
+    row.left_at = null;
+    row.via_subscription = viaSub || !!prev?.via_subscription;
+  }
+  if (!isIn && wasIn) row.left_at = now;
+  await supabase.from("channel_subscribers").upsert(row);
+
+  if (joined && viaSub && NOTIFY_NEW_SUBSCRIBERS) {
+    const again = (prev?.joins ?? 0) > 0 ? " (вернулся)" : "";
+    for (const adminId of ADMIN_IDS) {
+      await send(adminId, `💎 Новый подписчик${again}: ${rowName(user)} · +${CHANNEL_PRICE_STARS}⭐`);
+    }
+  }
+}
+
+async function paidStatus(chatId: number) {
+  const ch = await getPaidChannel();
+  if (!ch) {
+    await send(chatId,
+      "<b>Платный канал не подключён.</b>\n\n" +
+      "1. Добавь этого бота админом в канал (право «Приглашать пользователей»).\n" +
+      "2. Бот сам напишет, что канал подключён.\n" +
+      "3. /paid link — выпустить ссылку на подписку.\n\n" +
+      "Если бот не отписался — /paid channel @username (или -100… id).");
+    return;
+  }
+  await ensureWebhookUpdates();
+  const { data } = await supabase.from("channel_subscribers").select("status, via_subscription, last_joined_at");
+  const rows = data || [];
+  const subs = rows.filter((r: any) => r.via_subscription);
+  const active = subs.filter((r: any) => IN_CHANNEL.includes(r.status)).length;
+  const gone = subs.length - active;
+  const monthAgo = Date.now() - CHANNEL_PERIOD_SEC * 1000;
+  const fresh = subs.filter((r: any) => r.last_joined_at && Date.parse(r.last_joined_at) > monthAgo).length;
+  const stars = active * CHANNEL_PRICE_STARS;
+  await send(chatId,
+    `<b>Платный канал:</b> ${esc(ch.title)}\n` +
+    `Цена: ${CHANNEL_PRICE_STARS}⭐ / 30 дней\n` +
+    (ch.link ? `Ссылка: ${ch.link}\n` : "Ссылки ещё нет — /paid link\n") +
+    `\n👥 Активных подписчиков: <b>${active}</b>\n` +
+    `🆕 Пришли за 30 дней: ${fresh}\n` +
+    `👋 Отвалились: ${gone}\n` +
+    `💰 В месяц: ~<b>${stars}⭐</b> (≈ ${stars}₽ после вывода, грубо)\n\n` +
+    `<i>Считаются только те, кто зашёл по платной ссылке после подключения бота. ` +
+    `Точная выручка — в канале: Статистика → Монетизация.</i>`);
+}
+
+async function paidCommand(chatId: number, arg: string, rest: string) {
+  const a = arg.toLowerCase();
+  if (a === "link") {
+    const ch = await getPaidChannel();
+    if (!ch) return paidStatus(chatId);
+    const r = await createSubscriptionLink(ch.id);
+    if (!r.ok) {
+      await send(chatId, `Не вышло выпустить ссылку 😕\n<code>${esc(r.description || "")}</code>\n\nПроверь, что бот админ канала с правом «Приглашать пользователей».`);
+      return;
+    }
+    const link = r.result.invite_link;
+    await savePaidChannel({ ...ch, link });
+    await ensureWebhookUpdates();
+    await send(chatId,
+      `🔗 Ссылка на подписку (${CHANNEL_PRICE_STARS}⭐/мес):\n${link}\n\n` +
+      "Её и публикуй. Оплату, продление каждые 30 дней и удаление неплательщиков делает сам Telegram.");
+    return;
+  }
+  if (a === "channel") {
+    const target = rest.trim();
+    if (!target) { await send(chatId, "Формат: /paid channel @username или /paid channel -100…"); return; }
+    const r = await tg("getChat", { chat_id: /^-?\d+$/.test(target) ? Number(target) : target });
+    if (!r.ok || r.result.type !== "channel") {
+      await send(chatId, "Канал не найден. Бот должен быть в нём админом.");
+      return;
+    }
+    await savePaidChannel({ id: r.result.id, title: r.result.title || "канал" });
+    const err = await ensureWebhookUpdates();
+    await send(chatId, `✅ Канал «${esc(r.result.title || "")}» подключён.` +
+      (err ? `\n⚠️ Стата: ${esc(err)}` : "") + `\n\n/paid link — выпустить ссылку.`);
+    return;
+  }
+  return paidStatus(chatId);
+}
+
 async function handleUpdate(update: any) {
+  if (update.my_chat_member) return onMyChatMember(update.my_chat_member);
+  if (update.chat_member) return onChatMember(update.chat_member);
+
   // Подтверждение оплаты (обязательно в течение 10 сек)
   if (update.pre_checkout_query) {
     const q = update.pre_checkout_query;
@@ -360,17 +541,17 @@ async function handleUpdate(update: any) {
 
   // --- Команды ---
   if (text.startsWith("/")) {
-    const [head, arg = ""] = text.split(/\s+/);
+    const [head, arg = "", ...rest] = text.split(/\s+/);
     const cmd = head.split("@")[0].toLowerCase();
     if (cmd === "/start" && arg) await registerReferral(from, arg);
-    return handleCommand(cmd, chatId, from, arg);
+    return handleCommand(cmd, chatId, from, arg, rest.join(" "));
   }
 
   // Прочее
   await send(chatId, "Жми «Мгновенный рейт⚡️» и пришли фото 📸", { reply_markup: mainKb });
 }
 
-async function handleCommand(cmd: string, chatId: number, from: any, arg = "") {
+async function handleCommand(cmd: string, chatId: number, from: any, arg = "", rest = "") {
   switch (cmd) {
     case "/start": {
       await setMenuButton(chatId);
@@ -408,6 +589,8 @@ async function handleCommand(cmd: string, chatId: number, from: any, arg = "") {
   if (!isAdmin(from.id)) return;
 
   switch (cmd) {
+    case "/paid":
+      return paidCommand(chatId, arg, rest);
     case "/queue": {
       const { data } = await supabase.from("rate_tickets").select("*").in("status", ACTIVE).order("created_at");
       const rows = data || [];
